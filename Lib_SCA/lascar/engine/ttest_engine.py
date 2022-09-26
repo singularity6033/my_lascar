@@ -62,7 +62,8 @@ class TTestEngine(PartitionerEngine):
 
 def compute_ttest(*containers, batch_size=100):
     """
-    Compute Welch's TTest from distinct containers: no need of partitioning function, since each container contain only one of each criterion
+    Compute Welch's TTest from distinct containers: no need of partitioning function,
+    since each container contain only one of each criterion
 
     :param *containers:
     :return:
