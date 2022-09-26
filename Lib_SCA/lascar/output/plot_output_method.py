@@ -50,7 +50,7 @@ class MatPlotLibOutputMethod(OutputMethod):
         :param engines: engines to be tracked
         :param number_of_columns: number of columns for multiplot
         :param number_of_rows: number of lines for multiplot
-        :param single_plot: if True, all results are  on the same plot
+        :param single_plot: if True, all results are on the same plot
         :param display: if true, display the plot on the screen
         :param filename: it set, save the figure to filename
         :param legend: it set, displays thee legend on the figure

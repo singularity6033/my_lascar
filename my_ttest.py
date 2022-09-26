@@ -5,17 +5,17 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
-from Lib_SCA.lascar import *
+from Lib_SCA.lascar import Session, MatPlotLibOutputMethod, SimulatedPowerTraceFixedRandomContainer, TTestEngine
 
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, Session, MatPlotLibOutputMethod
-
-container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
+container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
+a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
+c = container.fixed_set[a_byte]
 
 
 def partition_function(
-        value,
+        value, attack_byte=a_byte, attack_time=container.attack_sample_point, cipher=c
 ):  # partition_function must take 1 argument: the value returned by the container at each trace
-    return int(value["plaintext"][0][0] == 0)  # "plaintext[3] == 0" versus "all other values"
+    return int(value["ciphertext"][attack_byte][attack_time] == cipher)
 
 
 ttest_engine = TTestEngine("ttest", partition_function)
@@ -26,28 +26,3 @@ session = Session(container, output_method=plot_output)
 session.add_engine(ttest_engine)
 
 session.run(batch_size=2500)
-
-"""
-Now let's compute the 16 ttest of the 16 bytes in //
-We choose here to display the 16 curves on the same plot
-"""
-
-# def get_partition_function(byte):
-#     def partition_function(value):
-#         return int(value["plaintext"][byte] == 0)
-#
-#     return partition_function
-#
-#
-# number_of_partitions = 2  # number of possible classes (~output of the partiton_function) for the partition_function
-# ttest_engines = [
-#     TTestEngine("ttest_plaintext_%d" % i, get_partition_function(i)) for i in range(16)
-# ]
-#
-# session = Session(
-#     container,
-#     engines=ttest_engines,
-#     output_method=MatPlotLibOutputMethod(*ttest_engines, single_plot=True, legend=True),
-# )
-#
-# session.run(batch_size=2500)

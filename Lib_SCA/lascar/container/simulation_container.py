@@ -20,6 +20,7 @@
 simulation_container.py
 """
 import numpy as np
+from tqdm import tqdm
 
 from Lib_SCA.lascar.tools.aes import sbox, Aes
 from Lib_SCA.lascar.tools.leakage_model import HammingPrecomputedModel
@@ -192,7 +193,6 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
                                      ("power_components", np.float64, (3, self.no_time_samples))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
-        # self.simulated_traces = self.generate_trace_batch(0, self.number_of_traces)
 
     @staticmethod
     def generate_bytes_curve(idx_sbox):
@@ -213,7 +213,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
     def generate_trace(self, idx):
         np.random.seed(seed=self.seed ^ idx)  # for reproducibility
         value = np.zeros((), dtype=self.value_dtype)
-        value["ciphertext"] = np.random.randint(0, 9, (self.number_of_bytes, self.number_of_time_samples), np.uint8)
+        # pre-generate ciphertext with binomial distribution
+        value["ciphertext"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_time_samples))
 
         # we only encrypt attack_sample_point and 2 points after it (3 sample points in total)
         key_extend = np.array(self.key, ndmin=2).T
@@ -236,8 +237,6 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
 
         # generate electronic noise
-        # mean_el = np.array(self.noise_mean_el)
-        # cov_el = np.array(self.noise_sigma_el, ndmin=2)
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         p_el = np.random.multivariate_normal(mean_el, cov_el).T  # no_time_samples * 1
@@ -252,10 +251,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
 
         # coefficients of exp (a) and switch (b)
         # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
-        # self.value["ciphertext"].astype(np.float64)
         p_exp = self.linear_coefficient_exp * np.sum(value["ciphertext"][self.idx_exp] * curve_exp, axis=0)
-        p_switch = self.linear_coefficient_switch * np.sum(value["ciphertext"][self.idx_switch] * curve_switch,
-                                                           axis=0)
+        p_switch = self.linear_coefficient_switch * np.sum(value["ciphertext"][self.idx_switch] * curve_switch, axis=0)
         for i in range(self.attack_sample_point, self.attack_sample_point + 3):
             p_el[i] = p_el[i] * self.sp_curve[i - self.attack_sample_point]
             p_exp[i] = p_exp[i] * self.sp_curve[i - self.attack_sample_point]
@@ -275,7 +272,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         (b) s-boxes are independent with each other, therefore var(sum(a_i * p_exp_i)) = sum((a_i ^ 2) * var(p_exp_i))
             and p_switch is the same;
         (c) p_exp and p_switch both are binomial distributions in HW model (0-7 after processed by the leakage model),
-            therefore var(p_exp_i) = len(idx_exp) * p * (1-p); var(p_switch_i) = len(idx_switch) * p * (1-p), where p=0.5
+            therefore var(p_exp_i) = 8 * p * (1-p) = var(p_switch_i), where p=0.5
         1.2 formula
         snr = var(p_exp) / (var(p_switch) + var(p_el))
         2. real snr
@@ -284,8 +281,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         """
         # theoretical snr
         if type == 'theo':
-            var_p_exp = 0.25 * len(self.idx_exp)
-            var_p_switch = 0.25 * len(self.idx_switch)
+            var_p_exp = 0.25 * 8 * len(self.idx_exp)
+            var_p_switch = 0.25 * 8 * len(self.idx_switch)
             if not ((self.linear_coefficient_switch ** 2) * var_p_switch + self.noise_sigma_el):
                 raise ValueError(
                     "divided by 0 occurs, cannot calculate theoretical snr, pls change parameters"
@@ -301,9 +298,9 @@ class SimulatedPowerTraceContainer(AbstractContainer):
             p_switch_m = np.zeros((self.number_of_traces, self.no_time_samples))
             p_el_m = np.zeros((self.number_of_traces, self.no_time_samples))
             for i in range(self.number_of_traces):
-                p_el_m[i, :] = self.simulated_traces[i].value["power_components"][0, :]
-                p_exp_m[i, :] = self.simulated_traces[i].value["power_components"][1, :]
-                p_switch_m[i, :] = self.simulated_traces[i].value["power_components"][2, :]
+                p_el_m[i, :] = self[i].value["power_components"][0, :]
+                p_exp_m[i, :] = self[i].value["power_components"][1, :]
+                p_switch_m[i, :] = self[i].value["power_components"][2, :]
             var_exp = np.var(p_exp_m, axis=0)
             var_el_switch = np.var(p_el_m + p_switch_m, axis=0)
             snr_real = var_exp / var_el_switch
@@ -318,7 +315,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         plt.xlabel('time')
         plt.xticks(np.arange(0, self.number_of_time_samples, 1))
         plt.ylabel('power')
-        for i in range(idx_traces[0], idx_traces[-1]):
+        for i in tqdm(range(idx_traces[0], idx_traces[-1])):
             plt.plot(self[i].leakage)
         plt.show()
 
@@ -343,7 +340,6 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.key = [i for i in range(params['number_of_bytes'])]
         self.seed = seed
         self.leakage_model_name = params['leakage_model_name']
-        self.value = 0
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -353,7 +349,6 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
                                      ("power_components", np.float64, (2, self.no_time_samples))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
-        self.simulated_traces = self.generate_trace_batch(0, self.number_of_traces)
 
     @staticmethod
     def generate_bytes_curve(idx_sbox):
@@ -372,19 +367,19 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         return curve
 
     def generate_trace(self, idx):
-        self.value = np.zeros((), dtype=self.value_dtype)
+        value = np.zeros((), dtype=self.value_dtype)
         key_extend = np.array(self.key, ndmin=2).T
-        self.value["key"] = key_extend.repeat(3, axis=1)
+        value["key"] = key_extend.repeat(3, axis=1)
         # random set generator
         np.random.seed(seed=self.seed ^ idx)  # for reproducibility
-        self.value["ciphertext"] = np.random.randint(0, 9, (self.number_of_bytes, self.number_of_time_samples), np.uint8)
+        value["ciphertext"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_time_samples))
         if idx % 2 == 0:
             bytes_used = self.idx_exp
             if self.attack_sample_point + 2 < self.number_of_time_samples:
-                self.value["plaintext"] = np.zeros((self.number_of_bytes, 3))
+                value["plaintext"] = np.zeros((self.number_of_bytes, 3))
                 pt_exp = np.random.randint(0, 256, (len(self.idx_exp), 1), np.uint8)
-                self.value["plaintext"][self.idx_exp] = pt_exp.repeat(3, axis=1)
-                cipher = self.value["plaintext"] ^ self.value["key"]
+                value["plaintext"][self.idx_exp] = pt_exp.repeat(3, axis=1)
+                cipher = value["plaintext"] ^ value["key"]
                 for i in bytes_used:
                     for j in [0, 2]:
                         cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
@@ -393,38 +388,19 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
             else:
                 print('[INFO] attack sample point is too late, pls choose earlier ones')
                 return
-            self.value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+            value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
         else:
             # fixed set generator
             if not len(self.fixed_set) == self.number_of_bytes:
                 print('[INFO] the size of fixed set is conflicted with the number of bytes')
                 return
-            elif not len(self.fixed_set[0]) == self.number_of_time_samples:
-                print('[INFO] the size of fixed set is conflicted with the number of time samples')
-                return
             else:
-                fixed_set_extend = np.array(self.fixed_set, ndmin=2)
-                for idx in range(self.number_of_bytes):
-                    self.value["ciphertext"][idx, :] = fixed_set_extend[idx, :]
-                # bytes_used = self.idx_exp
-                # if self.attack_sample_point + 2 < self.number_of_time_samples:
-                #     # rescaling
-                #     self.value["plaintext"] = np.interp(
-                #         self.value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3], (0, 9),
-                #         (0, 256)).astype(np.uint8)
-                #     cipher = self.value["plaintext"] ^ self.value["key"]
-                #     for i in bytes_used:
-                #         for j in [0, 2]:
-                #             cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
-                #     # copy values of the attack point into the next point
-                #     cipher[:, 1] = cipher[:, 0]
-                # else:
-                #     print('[INFO] attack sample point is too late, pls choose earlier ones')
-                #     return
+                fixed_set_extend = np.ones((len(self.fixed_set), 3))
+                for ci, cipher in enumerate(self.fixed_set):
+                    fixed_set_extend[ci, :] = [cipher] * 3
+                value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = fixed_set_extend
 
         # generate electronic noise
-        # mean_el = np.array(self.noise_mean_el)
-        # cov_el = np.array(self.noise_sigma_el, ndmin=2)
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         p_el = np.random.multivariate_normal(mean_el, cov_el).T  # no_time_samples * 1
@@ -436,19 +412,18 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         if self.bytes_curve:
             curve_exp = self.generate_bytes_curve(self.idx_exp)
 
-        # self.value["ciphertext"].astype(np.float64)
         # coefficients of exp (a) and switch (b)
         # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
-        p_exp = self.linear_coefficient_exp * np.sum(self.value["ciphertext"][self.idx_exp] * curve_exp, axis=0)
+        p_exp = self.linear_coefficient_exp * np.sum(value["ciphertext"][self.idx_exp] * curve_exp, axis=0)
         for i in range(self.attack_sample_point, self.attack_sample_point + 3):
             p_el[i] = p_el[i] * self.sp_curve[i]
             p_exp[i] = p_exp[i] * self.sp_curve[i]
         power = p_exp + p_el + self.constant
 
         # 3 * no_time_samples, used in calculation of real snr
-        self.value["power_components"] = np.vstack((p_el, p_exp))
+        value["power_components"] = np.vstack((p_el, p_exp))
 
-        return Trace(power, self.value)
+        return Trace(power, value)
 
     def calc_snr(self, type='theo'):
         """
@@ -459,7 +434,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         (b) s-boxes are independent with each other, therefore var(sum(a_i * p_exp_i)) = sum((a_i ^ 2) * var(p_exp_i))
             and p_switch is the same;
         (c) p_exp and p_switch both are binomial distributions in HW model (0-7 after processed by the leakage model),
-            therefore var(p_exp_i) = len(idx_exp) * p * (1-p); var(p_switch_i) = len(idx_switch) * p * (1-p), where p=0.5
+            therefore var(p_exp_i) = len(idx_exp) * 8 * p * (1-p); var(p_switch_i) = len(idx_switch) * p * (1-p), where p=0.5
         1.2 formula
         snr = var(p_exp) / (var(p_switch) + var(p_el))
         2. real snr
@@ -468,7 +443,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         """
         # theoretical snr
         if type == 'theo':
-            var_p_exp = 0.25 * len(self.idx_exp)
+            var_p_exp = 0.25 * 8 * len(self.idx_exp)
             if not self.noise_sigma_el:
                 raise ValueError(
                     "divided by 0 occurs, cannot calculate theoretical snr, pls change parameters"
@@ -482,8 +457,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
             p_exp_m = np.zeros((self.number_of_traces, self.no_time_samples))
             p_el_m = np.zeros((self.number_of_traces, self.no_time_samples))
             for i in range(self.number_of_traces):
-                p_el_m[i, :] = self.simulated_traces[i].value["power_components"][0, :]
-                p_exp_m[i, :] = self.simulated_traces[i].value["power_components"][1, :]
+                p_el_m[i, :] = self[i].value["power_components"][0, :]
+                p_exp_m[i, :] = self[i].value["power_components"][1, :]
             var_exp = np.var(p_exp_m, axis=0)
             var_el_switch = np.var(p_el_m, axis=0)
             snr_real = var_exp / var_el_switch
@@ -498,8 +473,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         plt.xlabel('time')
         plt.xticks(np.arange(0, self.number_of_time_samples, 1))
         plt.ylabel('power')
-        for i in range(idx_traces[0], idx_traces[-1]):
-            plt.plot(self.simulated_traces[i].leakage)
+        for i in tqdm(range(idx_traces[0], idx_traces[-1])):
+            plt.plot(self[i].leakage)
         plt.show()
 
 

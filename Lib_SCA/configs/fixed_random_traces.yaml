@@ -1,12 +1,13 @@
 # total number of traces
-number_of_traces: 100000
+number_of_traces: 300000
 
 # total number of bytes one trace has
-number_of_bytes: 2
+number_of_bytes: 1
 
 # number_of_bytes * number_of_time_samples
-fixed_set: [[4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-            [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]]
+# give a list of ciphertext for corresponding bytes
+# assume each byte has the same ciphertext along the time axis
+fixed_set: [3]
 
 # total number of time sample points one trace has
 number_of_time_samples: 10
@@ -20,7 +21,7 @@ linear_coefficient_exp: 1
 # index of bytes represented for exploitable signal
 # int or list (0-number_of_bytes)
 # all indexes should be exclusive and total number of them should equal to "number_of_bytes"
-idx_exp: [0, 1]
+idx_exp: [0]
 
 # parameters of electronic noise (a Multi-Gaussian distribution)
 # mean is a 1-d list with the shape: 1 * number_of_time_samples
@@ -33,17 +34,6 @@ idx_exp: [0, 1]
 # note: this is a simple covariance matrix only with variances along diagonal
 # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
 # automatically in the code
-#noise_mean_el: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-#noise_sigma_el: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 noise_mean_el: 0
 noise_sigma_el: 0
 
@@ -62,3 +52,10 @@ bytes_curve: false
 # leakage model used in simulation
 # "default" is the hamming weight model
 leakage_model_name: "default"
+
+# masking countermeasure
+masking: true
+
+# shuffle and shift
+shuffle: true
+shift: true

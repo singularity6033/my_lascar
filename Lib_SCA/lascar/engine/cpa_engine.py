@@ -83,7 +83,6 @@ class CpaEngine(GuessEngine):
                 v,
             )
         )
-        print(denominator)
         mask = v == 0.0
         numerator[:, mask] = 0.0
         denominator[:, mask] = 1.0

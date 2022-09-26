@@ -12,25 +12,22 @@ from Lib_SCA.lascar import SimulatedPowerTraceContainer, CpaEngine, hamming, Ses
 from Lib_SCA.lascar.tools.aes import sbox
 
 container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
+a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
 
 
 def selection_function(
-        value, guess
+        value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point
 ):  # selection_with_guess function must take 2 arguments: value and guess
-    """
-    What would the hamming weight of the output of the 3rd sbox be if the key was equal to 'guess' ?
-    """
-    return hamming(sbox[value["plaintext"][0][0] ^ guess])
+    return hamming(sbox[value["plaintext"][attack_byte][attack_time] ^ guess])
 
+0
+guess_range = range(2)
 
-guess_range = range(
-    16
-)  # the guess values: here we make hypothesis on a key byte, hence range(256)
-
-cpa_engine = CpaEngine("cpa_plaintext_3", selection_function, guess_range)
+cpa_engine = CpaEngine("cpa", selection_function, guess_range)
 
 session = Session(
     container, engine=cpa_engine, output_method=MatPlotLibOutputMethod(cpa_engine)
 )
 
-session.run(batch_size=200)
+session.run(batch_size=2500)
+results = cpa_engine.finalize()

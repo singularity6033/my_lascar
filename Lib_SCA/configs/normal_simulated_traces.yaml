@@ -1,8 +1,8 @@
 # total number of traces
-number_of_traces: 100000
+number_of_traces: 300000
 
 # total number of bytes one trace has
-number_of_bytes: 16
+number_of_bytes: 2
 
 # total number of time sample points one trace has
 number_of_time_samples: 10
@@ -17,8 +17,8 @@ linear_coefficient_switch: 1
 # index of bytes represented for exploitable signal and switching noise
 # int or list (0-number_of_bytes)
 # all indexes should be exclusive and total number of them should equal to "number_of_bytes"
-idx_exp: [0]
-idx_switch: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+idx_exp: [0, 1]
+idx_switch: []
 
 # parameters of electronic noise (a Multi-Gaussian distribution)
 # mean is a 1-d list with the shape: number_of_time_samples * 1
@@ -31,19 +31,8 @@ idx_switch: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 # note: this is a simple covariance matrix only with variances along diagonal
 # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
 # automatically in the code
-#noise_mean_el: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-#noise_sigma_el: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 noise_mean_el: 0
-noise_sigma_el: 1
+noise_sigma_el: 10
 
 # constant term used in calculation of trace power
 constant: 0
