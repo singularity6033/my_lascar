@@ -184,6 +184,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.key = [i for i in range(params['number_of_bytes'])]
         self.seed = seed
         self.leakage_model_name = params['leakage_model_name']
+        self.masking = params['masking']
+        self.number_of_masking_bytes = params['num_of_masking_bytes']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -229,6 +231,12 @@ class SimulatedPowerTraceContainer(AbstractContainer):
             for i in bytes_used:
                 for j in [0, 2]:
                     cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
+            if self.masking:
+                mask = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
+                for mb_i in range(self.number_of_masking_bytes):
+                    cipher = np.bitwise_xor(cipher, mask[:, mb_i, :])
+                sum_r = mask.sum(axis=1)
+                cipher = np.add(cipher, sum_r)
             # copy values of the attack point into the next point
             cipher[:, 1] = cipher[:, 0]
         else:
@@ -310,7 +318,6 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         if not isinstance(idx_traces, list):
             print('[INFO] idx_traces should be a list')
         import matplotlib.pyplot as plt
-        plt.figure(0)
         plt.title('simulated traces')
         plt.xlabel('time')
         plt.xticks(np.arange(0, self.number_of_time_samples, 1))

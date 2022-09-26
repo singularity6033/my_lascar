@@ -32,7 +32,7 @@ idx_switch: []
 # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
 # automatically in the code
 noise_mean_el: 0
-noise_sigma_el: 10
+noise_sigma_el: 0
 
 # constant term used in calculation of trace power
 constant: 0
@@ -49,3 +49,11 @@ bytes_curve: false
 # leakage model used in simulation
 # "default" is the hamming weight model
 leakage_model_name: "default"
+
+# masking countermeasure
+masking: true
+num_of_masking_bytes: 3
+
+# shuffle and shift
+shuffle: true
+shift: true

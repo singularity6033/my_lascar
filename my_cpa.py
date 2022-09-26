@@ -20,7 +20,7 @@ def selection_function(
 ):  # selection_with_guess function must take 2 arguments: value and guess
     return hamming(sbox[value["plaintext"][attack_byte][attack_time] ^ guess])
 
-0
+
 guess_range = range(2)
 
 cpa_engine = CpaEngine("cpa", selection_function, guess_range)
