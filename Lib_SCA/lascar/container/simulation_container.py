@@ -19,6 +19,8 @@
 """
 simulation_container.py
 """
+import random
+
 import numpy as np
 from tqdm import tqdm
 
@@ -186,6 +188,9 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.leakage_model_name = params['leakage_model_name']
         self.masking = params['masking']
         self.number_of_masking_bytes = params['num_of_masking_bytes']
+        self.shuffle = params['shuffle']
+        self.shift = params['shift']
+        self.shift_step = params['shift_step']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -193,7 +198,9 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 3)),
                                      ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
-                                     ("power_components", np.float64, (3, self.no_time_samples))])
+                                     ("power_components", np.float64, (3, self.no_time_samples)),
+                                     ("mask", np.uint8,
+                                      (self.number_of_bytes, self.number_of_masking_bytes, self.no_time_samples))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -232,13 +239,30 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                 for j in [0, 2]:
                     cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
             if self.masking:
-                mask = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
+                value['mask'] = np.random.binomial(n=8, p=0.5,
+                                                   size=(self.number_of_bytes,
+                                                         self.number_of_masking_bytes,
+                                                         self.number_of_time_samples))
                 for mb_i in range(self.number_of_masking_bytes):
-                    cipher = np.bitwise_xor(cipher, mask[:, mb_i, :])
-                sum_r = mask.sum(axis=1)
-                cipher = np.add(cipher, sum_r)
+                    cipher = np.bitwise_xor(cipher,
+                                            value['mask'][:, mb_i, self.attack_sample_point:self.attack_sample_point + 3])
+                sum_r = value['mask'].sum(axis=1)
+                cipher = np.add(cipher, sum_r[:, self.attack_sample_point:self.attack_sample_point + 3])
+                value["ciphertext"] += sum_r
             # copy values of the attack point into the next point
             cipher[:, 1] = cipher[:, 0]
+            if self.shuffle:
+                np.random.shuffle(np.transpose(cipher))
+            if self.shift and self.shift_step:
+                if abs(self.shift_step) > 3:
+                    print('[INFO] shift step is too large, pls choose smaller ones (<= 3)')
+                    return
+                else:
+                    cipher = np.roll(cipher, self.shift_step, axis=1)
+                    if self.shift_step > 0:
+                        cipher[:, :self.shift] = 0
+                    else:
+                        cipher[:, self.shift:] = 0
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
@@ -347,6 +371,11 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.key = [i for i in range(params['number_of_bytes'])]
         self.seed = seed
         self.leakage_model_name = params['leakage_model_name']
+        self.masking = params['masking']
+        self.number_of_masking_bytes = params['num_of_masking_bytes']
+        self.shuffle = params['shuffle']
+        self.shift = params['shift']
+        self.shift_step = params['shift_step']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -354,7 +383,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 3)),
                                      ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
-                                     ("power_components", np.float64, (2, self.no_time_samples))])
+                                     ("power_components", np.float64, (2, self.no_time_samples)),
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 3))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -390,23 +420,40 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 for i in bytes_used:
                     for j in [0, 2]:
                         cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
+                if self.masking:
+                    value["mask"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
+                    for mb_i in range(self.number_of_masking_bytes):
+                        cipher = np.bitwise_xor(cipher, value["mask"][:, mb_i, :])
+                    sum_r = value["mask"].sum(axis=1)
+                    cipher = np.add(cipher, sum_r)
                 # copy values of the attack point into the next point
                 cipher[:, 1] = cipher[:, 0]
             else:
                 print('[INFO] attack sample point is too late, pls choose earlier ones')
                 return
-            value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
         else:
             # fixed set generator
             if not len(self.fixed_set) == self.number_of_bytes:
                 print('[INFO] the size of fixed set is conflicted with the number of bytes')
                 return
             else:
-                fixed_set_extend = np.ones((len(self.fixed_set), 3))
-                for ci, cipher in enumerate(self.fixed_set):
-                    fixed_set_extend[ci, :] = [cipher] * 3
-                value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = fixed_set_extend
+                cipher = np.ones((len(self.fixed_set), 3))
+                for ci, c_text in enumerate(self.fixed_set):
+                    cipher[ci, :] = [c_text] * 3
 
+        if self.shuffle:
+            np.random.shuffle(np.transpose(cipher))
+        if self.shift and self.shift_step:
+            if abs(self.shift_step) > 3:
+                print('[INFO] shift step is too large, pls choose smaller ones (<= 3)')
+                return
+            else:
+                cipher = np.roll(cipher, self.shift_step, axis=1)
+                if self.shift_step > 0:
+                    cipher[:, :self.shift] = 0
+                else:
+                    cipher[:, self.shift:] = 0
+        value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)

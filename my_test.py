@@ -1,3 +1,5 @@
+import numpy as np
+
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 import matplotlib.pyplot as plt
 
