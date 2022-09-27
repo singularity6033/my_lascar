@@ -199,7 +199,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                                      ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
                                      ("power_components", np.float64, (3, self.no_time_samples)),
-                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 3))])
+                                     ("mask", np.uint8,
+                                      (self.number_of_bytes, self.number_of_masking_bytes, self.no_time_samples))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -237,11 +238,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
             for i in bytes_used:
                 for j in [0, 2]:
                     cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
-            if self.masking:
-                value['mask'] = np.random.binomial(n=8, p=0.5,
-                                                   size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
-                for mb_i in range(self.number_of_masking_bytes):
-                    cipher = np.bitwise_xor(cipher, value['mask'][:, mb_i, :])
+                # for mb_i in range(self.number_of_masking_bytes):
+                #     cipher = np.bitwise_xor(cipher, value['mask'][:, mb_i, :])
                 # sum_r = value['mask'].sum(axis=1)
                 # cipher = np.add(cipher, sum_r[:, self.attack_sample_point:self.attack_sample_point + 3])
                 # value["ciphertext"] += sum_r
@@ -263,6 +261,15 @@ class SimulatedPowerTraceContainer(AbstractContainer):
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+        if self.masking:
+            value['mask'] = np.random.binomial(n=8, p=0.5,
+                                               size=(self.number_of_bytes,
+                                                     self.number_of_masking_bytes,
+                                                     self.no_time_samples))
+            for mb_i in range(self.number_of_masking_bytes):
+                value["ciphertext"] ^= value['mask'][:, mb_i, :]
+            sum_r = value['mask'].sum(axis=1)
+            value["ciphertext"] += sum_r
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
@@ -416,13 +423,6 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 for i in bytes_used:
                     for j in [0, 2]:
                         cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
-                if self.masking:
-                    value["mask"] = np.random.binomial(n=8, p=0.5,
-                                                       size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
-                    for mb_i in range(self.number_of_masking_bytes):
-                        cipher = np.bitwise_xor(cipher, value["mask"][:, mb_i, :])
-                    sum_r = value["mask"].sum(axis=1)
-                    cipher = np.add(cipher, sum_r)
                 # copy values of the attack point into the next point
                 cipher[:, 1] = cipher[:, 0]
             else:
@@ -451,6 +451,15 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 else:
                     cipher[:, self.shift:] = 0
         value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+        if self.masking:
+            value['mask'] = np.random.binomial(n=8, p=0.5,
+                                               size=(self.number_of_bytes,
+                                                     self.number_of_masking_bytes,
+                                                     self.no_time_samples))
+            for mb_i in range(self.number_of_masking_bytes):
+                value["ciphertext"] ^= value['mask'][:, mb_i, :]
+            sum_r = value['mask'].sum(axis=1)
+            value["ciphertext"] += sum_r
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)

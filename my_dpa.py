@@ -22,7 +22,7 @@ def selection_function(value, guess, attack_byte=a_byte, attack_time=container.a
     return sbox[value["plaintext"][attack_byte][attack_time] ^ guess] & 1
 
 
-guess_range = range(2)
+guess_range = range(16)
 dpa_engine = DpaEngine("dpa", selection_function, guess_range)
 
 # We can now create a Session, register the dpa_lsb_engine, and run it.

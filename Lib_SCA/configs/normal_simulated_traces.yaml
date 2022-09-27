@@ -51,7 +51,7 @@ bytes_curve: false
 leakage_model_name: "default"
 
 # masking countermeasure
-masking: false
+masking: true
 num_of_masking_bytes: 3
 
 # shuffle and shift
