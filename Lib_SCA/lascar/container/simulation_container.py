@@ -199,8 +199,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                                      ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
                                      ("key", np.uint8, (self.number_of_bytes, 3)),
                                      ("power_components", np.float64, (3, self.no_time_samples)),
-                                     ("mask", np.uint8,
-                                      (self.number_of_bytes, self.number_of_masking_bytes, self.no_time_samples))])
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 3))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -240,15 +239,12 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                     cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
             if self.masking:
                 value['mask'] = np.random.binomial(n=8, p=0.5,
-                                                   size=(self.number_of_bytes,
-                                                         self.number_of_masking_bytes,
-                                                         self.number_of_time_samples))
+                                                   size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
                 for mb_i in range(self.number_of_masking_bytes):
-                    cipher = np.bitwise_xor(cipher,
-                                            value['mask'][:, mb_i, self.attack_sample_point:self.attack_sample_point + 3])
-                sum_r = value['mask'].sum(axis=1)
-                cipher = np.add(cipher, sum_r[:, self.attack_sample_point:self.attack_sample_point + 3])
-                value["ciphertext"] += sum_r
+                    cipher = np.bitwise_xor(cipher, value['mask'][:, mb_i, :])
+                # sum_r = value['mask'].sum(axis=1)
+                # cipher = np.add(cipher, sum_r[:, self.attack_sample_point:self.attack_sample_point + 3])
+                # value["ciphertext"] += sum_r
             # copy values of the attack point into the next point
             cipher[:, 1] = cipher[:, 0]
             if self.shuffle:
@@ -421,7 +417,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                     for j in [0, 2]:
                         cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
                 if self.masking:
-                    value["mask"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
+                    value["mask"] = np.random.binomial(n=8, p=0.5,
+                                                       size=(self.number_of_bytes, self.number_of_masking_bytes, 3))
                     for mb_i in range(self.number_of_masking_bytes):
                         cipher = np.bitwise_xor(cipher, value["mask"][:, mb_i, :])
                     sum_r = value["mask"].sum(axis=1)
