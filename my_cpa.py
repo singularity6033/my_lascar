@@ -11,23 +11,27 @@ It needs:
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, CpaEngine, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 
-container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
-a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
+
+def cpa_attack(config_name, no_of_guesses=16, engine_name='cpa', batch_size=2500):
+    container = SimulatedPowerTraceContainer(config_name)
+    a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
+
+    def selection_function(
+            value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point
+    ):  # selection_with_guess function must take 2 arguments: value and guess
+        return hamming(sbox[value["plaintext"][attack_byte][attack_time] ^ guess])
+
+    guess_range = range(no_of_guesses)
+
+    cpa_engine = CpaEngine(engine_name, selection_function, guess_range)
+
+    session = Session(
+        container, engine=cpa_engine, output_method=MatPlotLibOutputMethod(cpa_engine)
+    )
+
+    session.run(batch_size=batch_size)
+    results = cpa_engine.finalize()
 
 
-def selection_function(
-        value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point
-):  # selection_with_guess function must take 2 arguments: value and guess
-    return hamming(sbox[value["plaintext"][attack_byte][attack_time] ^ guess])
-
-
-guess_range = range(16)
-
-cpa_engine = CpaEngine("cpa", selection_function, guess_range)
-
-session = Session(
-    container, engine=cpa_engine, output_method=MatPlotLibOutputMethod(cpa_engine)
-)
-
-session.run(batch_size=2500)
-results = cpa_engine.finalize()
+if __name__ == '__main__':
+    cpa_attack(config_name='normal_simulated_traces.yaml', no_of_guesses=4, engine_name='cpa', batch_size=2500)
