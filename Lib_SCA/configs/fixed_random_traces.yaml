@@ -60,6 +60,3 @@ num_of_masking_bytes: 3
 # shuffle and shift
 shuffle: true
 shift: true
-# > 0 - right shift
-# < 0 - left shift
-shift_step: 1

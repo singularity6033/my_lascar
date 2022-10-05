@@ -177,6 +177,11 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.linear_coefficient_switch = float(params['linear_coefficient_switch'])
         self.idx_exp = params['idx_exp']
         self.idx_switch = params['idx_switch']
+        if not len(self.idx_exp) + len(self.idx_switch) == self.number_of_bytes:
+            print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
+                  'number_of_byte')
+            return
+
         self.noise_mean_el = params['noise_mean_el']
         self.noise_sigma_el = params['noise_sigma_el']
         self.no_time_samples = params['number_of_time_samples']
@@ -190,17 +195,15 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.number_of_masking_bytes = params['num_of_masking_bytes']
         self.shuffle = params['shuffle']
         self.shift = params['shift']
-        self.shift_step = params['shift_step']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
 
-        self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 3)),
-                                     ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
-                                     ("key", np.uint8, (self.number_of_bytes, 3)),
+        self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 1)),
+                                     ("leakage_model_output", np.uint8, (self.number_of_bytes, self.no_time_samples)),
+                                     ("key", np.uint8, (self.number_of_bytes, 1)),
                                      ("power_components", np.float64, (3, self.no_time_samples)),
-                                     ("mask", np.uint8,
-                                      (self.number_of_bytes, self.number_of_masking_bytes, self.no_time_samples))])
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 1))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -223,60 +226,36 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         np.random.seed(seed=self.seed ^ idx)  # for reproducibility
         value = np.zeros((), dtype=self.value_dtype)
         # pre-generate ciphertext with binomial distribution
-        value["ciphertext"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_time_samples))
+        value["leakage_model_output"] = np.random.binomial(n=8, p=0.5,
+                                                           size=(self.number_of_bytes, self.number_of_time_samples))
 
         # we only encrypt attack_sample_point and 2 points after it (3 sample points in total)
-        key_extend = np.array(self.key, ndmin=2).T
-        value["key"] = key_extend.repeat(3, axis=1)
-        bytes_used = self.idx_exp + self.idx_switch
+        value["key"] = np.array(self.key, ndmin=2).T
         if self.attack_sample_point + 2 < self.number_of_time_samples:
-            value["plaintext"] = np.zeros((self.number_of_bytes, 3))
-            pt_exp = np.random.randint(0, 256, (len(self.idx_exp), 1), np.uint8)
-            value["plaintext"][self.idx_exp] = pt_exp.repeat(3, axis=1)
-            value["plaintext"][self.idx_switch] = np.random.randint(0, 256, (len(self.idx_switch), 3), np.uint8)
+            value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
             cipher = value["plaintext"] ^ value["key"]
-            for i in bytes_used:
-                for j in [0, 2]:
-                    cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
-                # for mb_i in range(self.number_of_masking_bytes):
-                #     cipher = np.bitwise_xor(cipher, value['mask'][:, mb_i, :])
-                # sum_r = value['mask'].sum(axis=1)
-                # cipher = np.add(cipher, sum_r[:, self.attack_sample_point:self.attack_sample_point + 3])
-                # value["ciphertext"] += sum_r
-            # copy values of the attack point into the next point
-            cipher[:, 1] = cipher[:, 0]
-            if self.shuffle:
-                np.random.shuffle(np.transpose(cipher))
-            if self.shift and self.shift_step:
-                if abs(self.shift_step) > 3:
-                    print('[INFO] shift step is too large, pls choose smaller ones (<= 3)')
-                    return
-                else:
-                    cipher = np.roll(cipher, self.shift_step, axis=1)
-                    if self.shift_step > 0:
-                        cipher[:, :self.shift] = 0
-                    else:
-                        cipher[:, self.shift:] = 0
+            if self.masking:
+                value["mask"] = np.random.randint(0, 256,
+                                                  (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
+            for i in range(self.number_of_bytes):
+                sbox_output = sbox[cipher[i]]
+                if self.masking:
+                    for j in range(self.number_of_masking_bytes):
+                        sbox_output ^= value["mask"][i][j]
+                cipher[i] = self.leakage_model(sbox_output)
+            # # keep the same value along the time axis
+            cipher = cipher.repeat(3, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
-        value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        if self.masking:
-            value['mask'] = np.random.binomial(n=8, p=0.5,
-                                               size=(self.number_of_bytes,
-                                                     self.number_of_masking_bytes,
-                                                     self.no_time_samples))
-            for mb_i in range(self.number_of_masking_bytes):
-                value["ciphertext"] ^= value['mask'][:, mb_i, :]
-            sum_r = value['mask'].sum(axis=1)
-            value["ciphertext"] += sum_r
+        value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         p_el = np.random.multivariate_normal(mean_el, cov_el).T  # no_time_samples * 1
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
-        p_el.astype(np.float64)
+        # p_el.astype(np.float64)
 
         # generate curve of bytes
         curve_exp, curve_switch = 1.0, 1.0
@@ -286,8 +265,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
 
         # coefficients of exp (a) and switch (b)
         # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
-        p_exp = self.linear_coefficient_exp * np.sum(value["ciphertext"][self.idx_exp] * curve_exp, axis=0)
-        p_switch = self.linear_coefficient_switch * np.sum(value["ciphertext"][self.idx_switch] * curve_switch, axis=0)
+        p_exp = self.linear_coefficient_exp * np.sum(value["leakage_model_output"][self.idx_exp] * curve_exp, axis=0)
+        p_switch = self.linear_coefficient_switch * np.sum(value["leakage_model_output"][self.idx_switch] * curve_switch, axis=0)
         for i in range(self.attack_sample_point, self.attack_sample_point + 3):
             p_el[i] = p_el[i] * self.sp_curve[i - self.attack_sample_point]
             p_exp[i] = p_exp[i] * self.sp_curve[i - self.attack_sample_point]
@@ -296,6 +275,15 @@ class SimulatedPowerTraceContainer(AbstractContainer):
 
         # 3 * no_time_samples, used in calculation of real snr
         value["power_components"] = np.vstack((np.vstack((p_el, p_exp)), p_switch))
+
+        if self.shuffle:
+            np.random.shuffle(np.transpose(power))
+
+        if self.shift:
+            shift_step = np.random.randint(0, self.no_time_samples - (self.attack_sample_point + 2))
+            power = np.roll(power, shift_step)
+            power[:shift_step] = 0
+
         return Trace(power, value)
 
     def calc_snr(self, type='theo'):
@@ -365,6 +353,11 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.attack_sample_point = params['attack_sample_point']
         self.linear_coefficient_exp = float(params['linear_coefficient_exp'])
         self.idx_exp = params['idx_exp']
+        if not len(self.idx_exp) + len(self.idx_switch) == self.number_of_bytes:
+            print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
+                  'number_of_byte')
+            return
+
         self.noise_sigma_el = params['noise_sigma_el']
         self.noise_mean_el = params['noise_mean_el']
         self.no_time_samples = params['number_of_time_samples']
@@ -383,11 +376,11 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
 
-        self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 3)),
-                                     ("ciphertext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
-                                     ("key", np.uint8, (self.number_of_bytes, 3)),
-                                     ("power_components", np.float64, (2, self.no_time_samples)),
-                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 3))])
+        self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 1)),
+                                     ("leakage_model_output", np.uint8, (self.number_of_bytes, self.no_time_samples)),
+                                     ("key", np.uint8, (self.number_of_bytes, 1)),
+                                     ("power_components", np.float64, (3, self.no_time_samples)),
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 1))])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -408,23 +401,26 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
     def generate_trace(self, idx):
         value = np.zeros((), dtype=self.value_dtype)
-        key_extend = np.array(self.key, ndmin=2).T
-        value["key"] = key_extend.repeat(3, axis=1)
+        value["key"] = np.array(self.key, ndmin=2).T
         # random set generator
         np.random.seed(seed=self.seed ^ idx)  # for reproducibility
-        value["ciphertext"] = np.random.binomial(n=8, p=0.5, size=(self.number_of_bytes, self.number_of_time_samples))
+        value["leakage_model_output"] = np.random.binomial(n=8, p=0.5,
+                                                           size=(self.number_of_bytes, self.number_of_time_samples))
         if idx % 2 == 0:
-            bytes_used = self.idx_exp
             if self.attack_sample_point + 2 < self.number_of_time_samples:
-                value["plaintext"] = np.zeros((self.number_of_bytes, 3))
-                pt_exp = np.random.randint(0, 256, (len(self.idx_exp), 1), np.uint8)
-                value["plaintext"][self.idx_exp] = pt_exp.repeat(3, axis=1)
+                value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
                 cipher = value["plaintext"] ^ value["key"]
-                for i in bytes_used:
-                    for j in [0, 2]:
-                        cipher[i][j] = self.leakage_model(sbox[cipher[i][j]])
-                # copy values of the attack point into the next point
-                cipher[:, 1] = cipher[:, 0]
+                if self.masking:
+                    value["mask"] = np.random.randint(0, 256,
+                                                      (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
+                for i in range(self.number_of_bytes):
+                    sbox_output = sbox[cipher[i]]
+                    if self.masking:
+                        for j in range(self.number_of_masking_bytes):
+                            sbox_output ^= value["mask"][i][j]
+                    cipher[i] = self.leakage_model(sbox_output)
+                # # keep the same value along the time axis
+                cipher = cipher.repeat(3, axis=1)
             else:
                 print('[INFO] attack sample point is too late, pls choose earlier ones')
                 return
@@ -437,29 +433,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 cipher = np.ones((len(self.fixed_set), 3))
                 for ci, c_text in enumerate(self.fixed_set):
                     cipher[ci, :] = [c_text] * 3
+        value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
 
-        if self.shuffle:
-            np.random.shuffle(np.transpose(cipher))
-        if self.shift and self.shift_step:
-            if abs(self.shift_step) > 3:
-                print('[INFO] shift step is too large, pls choose smaller ones (<= 3)')
-                return
-            else:
-                cipher = np.roll(cipher, self.shift_step, axis=1)
-                if self.shift_step > 0:
-                    cipher[:, :self.shift] = 0
-                else:
-                    cipher[:, self.shift:] = 0
-        value["ciphertext"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        if self.masking:
-            value['mask'] = np.random.binomial(n=8, p=0.5,
-                                               size=(self.number_of_bytes,
-                                                     self.number_of_masking_bytes,
-                                                     self.no_time_samples))
-            for mb_i in range(self.number_of_masking_bytes):
-                value["ciphertext"] ^= value['mask'][:, mb_i, :]
-            sum_r = value['mask'].sum(axis=1)
-            value["ciphertext"] += sum_r
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
@@ -474,7 +449,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
         # coefficients of exp (a) and switch (b)
         # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
-        p_exp = self.linear_coefficient_exp * np.sum(value["ciphertext"][self.idx_exp] * curve_exp, axis=0)
+        p_exp = self.linear_coefficient_exp * np.sum(value["leakage_model_output"][self.idx_exp] * curve_exp, axis=0)
         for i in range(self.attack_sample_point, self.attack_sample_point + 3):
             p_el[i] = p_el[i] * self.sp_curve[i]
             p_exp[i] = p_exp[i] * self.sp_curve[i]
@@ -482,6 +457,14 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
         # 3 * no_time_samples, used in calculation of real snr
         value["power_components"] = np.vstack((p_el, p_exp))
+
+        if self.shuffle:
+            np.random.shuffle(np.transpose(power))
+
+        if self.shift:
+            shift_step = np.random.randint(0, self.no_time_samples - (self.attack_sample_point + 2))
+            power = np.roll(power, shift_step)
+            power[:shift_step] = 0
 
         return Trace(power, value)
 
