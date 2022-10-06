@@ -353,7 +353,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.attack_sample_point = params['attack_sample_point']
         self.linear_coefficient_exp = float(params['linear_coefficient_exp'])
         self.idx_exp = params['idx_exp']
-        if not len(self.idx_exp) + len(self.idx_switch) == self.number_of_bytes:
+        if not len(self.idx_exp) == self.number_of_bytes:
             print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
                   'number_of_byte')
             return
@@ -371,7 +371,6 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.number_of_masking_bytes = params['num_of_masking_bytes']
         self.shuffle = params['shuffle']
         self.shift = params['shift']
-        self.shift_step = params['shift_step']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -379,8 +378,9 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, 1)),
                                      ("leakage_model_output", np.uint8, (self.number_of_bytes, self.no_time_samples)),
                                      ("key", np.uint8, (self.number_of_bytes, 1)),
-                                     ("power_components", np.float64, (3, self.no_time_samples)),
-                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 1))])
+                                     ("power_components", np.float64, (2, self.no_time_samples)),
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, 1)),
+                                     ("trace_idx", np.uint8, ())])
         AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
 
     @staticmethod
@@ -401,6 +401,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
     def generate_trace(self, idx):
         value = np.zeros((), dtype=self.value_dtype)
+        value["trace_idx"] = idx
         value["key"] = np.array(self.key, ndmin=2).T
         # random set generator
         np.random.seed(seed=self.seed ^ idx)  # for reproducibility

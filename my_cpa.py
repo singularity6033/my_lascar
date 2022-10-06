@@ -8,12 +8,16 @@ It needs:
 - a "guess_range" which will define what are the guess possible values
 
 """
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, CpaEngine, hamming, Session, MatPlotLibOutputMethod
+from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import CpaEngine, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 
 
-def cpa_attack(config_name, no_of_guesses=16, engine_name='cpa', batch_size=2500):
-    container = SimulatedPowerTraceContainer(config_name)
+def cpa_attack(mode, config_name, no_of_guesses=16, engine_name='cpa', batch_size=2500):
+    if mode == 'normal':
+        container = SimulatedPowerTraceContainer(config_name)
+    elif mode == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_name)
     a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
 
     def selection_function(
@@ -34,4 +38,9 @@ def cpa_attack(config_name, no_of_guesses=16, engine_name='cpa', batch_size=2500
 
 
 if __name__ == '__main__':
-    cpa_attack(config_name='normal_simulated_traces.yaml', no_of_guesses=4, engine_name='cpa', batch_size=2500)
+    # mode = 'fix_random' or 'normal'
+    cpa_attack(mode='fix_random',
+               config_name='fixed_random_traces.yaml',
+               no_of_guesses=2,
+               engine_name='cpa',
+               batch_size=2500)

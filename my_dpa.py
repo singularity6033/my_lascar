@@ -1,12 +1,16 @@
 # First the Container:
-from Lib_SCA.lascar import SimulatedPowerTraceContainer
+from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
 from Lib_SCA.lascar import Session
 import matplotlib.pyplot as plt
 
 
-def dpa_attack(config_name, no_of_guesses=16, engine_name='dpa', batch_size=2500):
+def dpa_attack(mode, config_name, no_of_guesses=16, engine_name='dpa', batch_size=2500):
+    if mode == 'normal':
+        container = SimulatedPowerTraceContainer(config_name)
+    elif mode == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_name)
     container = SimulatedPowerTraceContainer(config_name)
     """
     Then we build the DpaEngine.
@@ -49,4 +53,8 @@ def dpa_attack(config_name, no_of_guesses=16, engine_name='dpa', batch_size=2500
 
 
 if __name__ == '__main__':
-    dpa_attack(config_name='normal_simulated_traces.yaml', no_of_guesses=4, engine_name='dpa', batch_size=2500)
+    dpa_attack(mode='normal',
+               config_name='normal_simulated_traces.yaml',
+               no_of_guesses=2,
+               engine_name='dpa',
+               batch_size=2500)

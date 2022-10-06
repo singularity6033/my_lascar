@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
 
 container.plot_traces([0, container.number_of_traces])
+# print(container[25].value['trace_idx'])
 # snr_theo = container.calc_snr('theo')
+
 # snr_real = container.calc_snr('real')
 #
 # plt.figure(1)
