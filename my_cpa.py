@@ -9,7 +9,7 @@ It needs:
 
 """
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import CpaEngine, hamming, Session, MatPlotLibOutputMethod
+from Lib_SCA.lascar import CpaEngine, hamming, Session, MatPlotLibOutputMethod, numerical_success_rate
 from Lib_SCA.lascar.tools.aes import sbox
 
 
@@ -35,12 +35,13 @@ def cpa_attack(mode, config_name, no_of_guesses=16, engine_name='cpa', batch_siz
 
     session.run(batch_size=batch_size)
     results = cpa_engine.finalize()
+    print(numerical_success_rate(results, 0, 5).eval())
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
-    cpa_attack(mode='fix_random',
-               config_name='fixed_random_traces.yaml',
-               no_of_guesses=2,
+    cpa_attack(mode='normal',
+               config_name='normal_simulated_traces.yaml',
+               no_of_guesses=16,
                engine_name='cpa',
                batch_size=2500)

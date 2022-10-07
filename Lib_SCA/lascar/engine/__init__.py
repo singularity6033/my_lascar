@@ -39,6 +39,7 @@ from .classifier_engine import save_classifier
 from .classifier_engine import load_classifier
 
 from .dom_engine import DomEngine
+from .success_rate_engine import numerical_success_rate
 
 # from .template_engine import TemplateProfileEngine
 # from .template_engine import TemplateMatchEngine
