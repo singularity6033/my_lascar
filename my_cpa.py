@@ -35,13 +35,13 @@ def cpa_attack(mode, config_name, no_of_guesses=16, engine_name='cpa', batch_siz
 
     session.run(batch_size=batch_size)
     results = cpa_engine.finalize()
-    print(numerical_success_rate(results, 0, 5).eval())
+    print(numerical_success_rate(distinguish_vector=results, correct_key=0, order=1).eval())
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cpa_attack(mode='normal',
                config_name='normal_simulated_traces.yaml',
-               no_of_guesses=16,
+               no_of_guesses=4,
                engine_name='cpa',
                batch_size=2500)

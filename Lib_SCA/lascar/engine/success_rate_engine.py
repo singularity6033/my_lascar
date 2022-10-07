@@ -38,19 +38,20 @@ class numerical_success_rate:
         cov = np.dot((c-tmp), (c-tmp).T) / self.no_time_samples
         dis = multivariate_normal(mean=miu, cov=cov, allow_singular=True)
 
-        # calculating cdf of
-        alpha = np.arange(0, self.no_key_guesses-1)
+        # calculating cdf of c
+        # alpha belongs to {1, 2, ..., |K|-1}
+        alpha = np.arange(1, self.no_key_guesses)
         lower_bound = np.zeros(self.no_key_guesses-1)
         upper_bound = np.zeros(self.no_key_guesses-1)
         sr = 0
         for o in range(self.order):
-            for i in range(self.no_key_guesses-1):
-                if i != alpha[o]:
-                    lower_bound[i] = 0
-                    upper_bound[i] = float('inf')
+            for i in range(1, self.no_key_guesses):
+                if i in alpha[:o]:
+                    lower_bound[i-1] = 0
+                    upper_bound[i-1] = float('inf')
                 else:
-                    lower_bound[i] = float('-inf')
-                    upper_bound[i] = 0
+                    lower_bound[i-1] = float('-inf')
+                    upper_bound[i-1] = 0
             # dis.cdf(x) only calculates P(-inf < t < x)
             # P(lower_bound < t < upper_bound) = P(-inf < t < upper_bound) - P(-inf < t < lower_bound)
             sr += (dis.cdf(upper_bound) - dis.cdf(lower_bound))
