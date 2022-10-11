@@ -8,9 +8,9 @@ from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixe
 import matplotlib.pyplot as plt
 
 # container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
-# container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
+container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
 #
-# container.plot_traces([0, container.number_of_traces])
+container.plot_traces(list(range(1, container.number_of_traces, 2)))
 # print(container[25].value['trace_idx'])
 # snr_theo = container.calc_snr('theo')
 

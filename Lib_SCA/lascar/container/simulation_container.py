@@ -517,7 +517,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         plt.xlabel('time')
         plt.xticks(np.arange(0, self.number_of_time_samples, 1))
         plt.ylabel('power')
-        for i in tqdm(range(idx_traces[0], idx_traces[-1])):
+        for i in tqdm(idx_traces):
             plt.plot(self[i].leakage)
         plt.show()
 

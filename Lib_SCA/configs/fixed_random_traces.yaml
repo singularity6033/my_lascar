@@ -1,5 +1,5 @@
 # total number of traces
-number_of_traces: 30000
+number_of_traces: 6000
 
 # total number of bytes one trace has
 number_of_bytes: 1
@@ -35,7 +35,7 @@ idx_exp: [0]
 # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
 # automatically in the code
 noise_mean_el: 0
-noise_sigma_el: 5
+noise_sigma_el: 0
 
 # constant term used in calculation of trace power
 constant: 0
@@ -54,7 +54,7 @@ bytes_curve: false
 leakage_model_name: "default"
 
 # masking countermeasure
-masking: false
+masking: true
 num_of_masking_bytes: 3
 
 # shuffle and shift
