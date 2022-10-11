@@ -14,7 +14,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-# Copyright 2018 Manuel San Pedro, Victor Servant, Charles Guillemet, Ledger SAS - manuel.sanpedro@ledger.fr, victor.servant@ledger.fr, charles@ledger.fr
+# Copyright 2018 Manuel San Pedro, Victor Servant, Charles Guillemet, Ledger SAS - manuel.sanpedro@ledger.fr,
+# victor.servant@ledger.fr, charles@ledger.fr
 
 from .engine import ContainerDumpEngine
 from .engine import MeanEngine
@@ -39,6 +40,7 @@ from .classifier_engine import save_classifier
 from .classifier_engine import load_classifier
 
 from .dom_engine import DomEngine
+from .mi_engine import MiEngine
 from .success_rate_engine import numerical_success_rate
 
 # from .template_engine import TemplateProfileEngine
