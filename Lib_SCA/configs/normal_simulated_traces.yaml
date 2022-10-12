@@ -1,11 +1,11 @@
 # total number of traces
-number_of_traces: 60
+number_of_traces: 3000
 
 # total number of bytes one trace has
 number_of_bytes: 1
 
 # total number of time sample points one trace has
-number_of_time_samples: 80
+number_of_time_samples: 10
 
 # position (index) of time sample point we presumptively attack
 attack_sample_point: 0
@@ -17,8 +17,8 @@ linear_coefficient_switch: 1
 # index of bytes represented for exploitable signal and switching noise
 # int or list (0-number_of_bytes)
 # all indexes should be exclusive and total number of them should equal to "number_of_bytes"
-idx_exp: [0]
-idx_switch: []
+idx_exploitable_bytes: [0]
+idx_switching_noise_bytes: []
 
 # parameters of electronic noise (a Multi-Gaussian distribution)
 # mean is a 1-d list with the shape: number_of_time_samples * 1

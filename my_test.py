@@ -1,6 +1,7 @@
 from math import inf
 
 import numpy as np
+from scipy import integrate
 from scipy.stats import mvn, multivariate_normal
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
@@ -8,9 +9,10 @@ from sklearn.neighbors import KernelDensity
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 import matplotlib.pyplot as plt
 
-# container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
+container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
 # container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
 #
+container.plot_traces(list(range(container.number_of_traces)))
 # container.plot_traces(list(range(1, container.number_of_traces, 2)))
 # print(container[25].value['trace_idx'])
 # snr_theo = container.calc_snr('theo')
@@ -35,12 +37,27 @@ import matplotlib.pyplot as plt
 # y = numerical_success_rate(x, 0, 5).eval()
 
 # x = np.random.binomial(n=8, p=0.5, size=(1000, 1))
-x = np.random.normal(0, 1.0, (1000, 2))
-bd = np.sum(x, axis=0)
-bdd = np.array(bd, ndmin=2)
+# x = np.random.normal(0, 1.0, (1000, 1))
+# print(x[0, 9])
+# bd = np.sum(x, axis=0)
+# bdd = np.array(bd, ndmin=2)
 # kde = KernelDensity(kernel='epanechnikov', bandwidth=0.2).fit(x)
+# y = kde.score_samples(np.ones((1, 1)) * 1.5)
+# z = kde.score_samples(x)
+
+
+# def f(x, kde):
+#     x = np.ones((1, 1)) * x
+#     return np.exp(kde.score_samples(x))
+
+
+# v = integrate.quad(f, 1, 50, args=kde)
 # y = kde.score_samples(x)
 # y1 = np.exp(y)
 # plt.figure(1)
 # plt.plot(x, y1)
 # plt.show()
+
+
+# a = [1, 2, 3]
+# b = np.array(a, ndmin=2).T

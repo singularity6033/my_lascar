@@ -175,8 +175,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.attack_sample_point = params['attack_sample_point']
         self.linear_coefficient_exp = float(params['linear_coefficient_exp'])
         self.linear_coefficient_switch = float(params['linear_coefficient_switch'])
-        self.idx_exp = params['idx_exp']
-        self.idx_switch = params['idx_switch']
+        self.idx_exp = params['idx_exploitable_bytes']
+        self.idx_switch = params['idx_switching_noise_bytes']
         if not len(self.idx_exp) + len(self.idx_switch) == self.number_of_bytes:
             print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
                   'number_of_byte')
@@ -237,18 +237,23 @@ class SimulatedPowerTraceContainer(AbstractContainer):
             if self.masking:
                 value["mask"] = np.random.randint(0, 256,
                                                   (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
+                r_bytes = np.zeros((self.number_of_bytes, 1))
             for i in range(self.number_of_bytes):
                 sbox_output = sbox[cipher[i]]
                 if self.masking:
                     for j in range(self.number_of_masking_bytes):
                         sbox_output ^= value["mask"][i][j]
+                        r_bytes[i] += self.leakage_model(value["mask"][i][j])
+
                 cipher[i] = self.leakage_model(sbox_output)
-            # # keep the same value along the time axis
+            # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
+            r_bytes = r_bytes.repeat(self.no_time_samples, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+        value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
@@ -352,7 +357,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.number_of_time_samples = params['number_of_time_samples']
         self.attack_sample_point = params['attack_sample_point']
         self.linear_coefficient_exp = float(params['linear_coefficient_exp'])
-        self.idx_exp = params['idx_exp']
+        self.idx_exp = params['idx_exploitable_bytes']
         if not len(self.idx_exp) == self.number_of_bytes:
             print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
                   'number_of_byte')
@@ -360,7 +365,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
         self.noise_sigma_el = params['noise_sigma_el']
         self.noise_mean_el = params['noise_mean_el']
-        self.no_time_samples = params['number_of_time_samples']
+        self.no_time_samples = params['number_of_time_samplesR']
         self.constant = float(params['constant'])
         self.sp_curve = params['sp_curve']
         self.bytes_curve = params['bytes_curve']
@@ -408,40 +413,43 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         value["leakage_model_output"] = np.random.binomial(n=8, p=0.5,
                                                            size=(self.number_of_bytes, self.number_of_time_samples))
         if idx % 2 == 0:
-            if self.attack_sample_point + 2 < self.number_of_time_samples:
-                value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
-                cipher = value["plaintext"] ^ value["key"]
-                if self.masking:
-                    value["mask"] = np.random.randint(0, 256,
-                                                      (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
-                for i in range(self.number_of_bytes):
-                    sbox_output = sbox[cipher[i]]
-                    if self.masking:
-                        for j in range(self.number_of_masking_bytes):
-                            sbox_output ^= value["mask"][i][j]
-                    cipher[i] = self.leakage_model(sbox_output)
-                # # keep the same value along the time axis
-                cipher = cipher.repeat(3, axis=1)
-            else:
-                print('[INFO] attack sample point is too late, pls choose earlier ones')
-                return
+            value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
         else:
             # fixed set generator
             if not len(self.fixed_set) == self.number_of_bytes:
                 print('[INFO] the size of fixed set is conflicted with the number of bytes')
                 return
             else:
-                cipher = np.ones((len(self.fixed_set), 3))
-                for ci, c_text in enumerate(self.fixed_set):
-                    cipher[ci, :] = [c_text] * 3
+                value["plaintext"] = np.array(self.fixed_set, ndmin=2).T
+
+        if self.attack_sample_point + 2 < self.number_of_time_samples:
+            value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
+            cipher = value["plaintext"] ^ value["key"]
+            if self.masking:
+                value["mask"] = np.random.randint(0, 256,
+                                                  (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
+                r_bytes = np.zeros((self.number_of_bytes, 1))
+            for i in range(self.number_of_bytes):
+                sbox_output = sbox[cipher[i]]
+                if self.masking:
+                    for j in range(self.number_of_masking_bytes):
+                        sbox_output ^= value["mask"][i][j]
+                cipher[i] = self.leakage_model(sbox_output)
+                r_bytes[i] += self.leakage_model(value["mask"][i][j])
+            # # keep the same value along the time axis
+            cipher = cipher.repeat(3, axis=1)
+        else:
+            print('[INFO] attack sample point is too late, pls choose earlier ones')
+            return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+        value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         p_el = np.random.multivariate_normal(mean_el, cov_el).T  # no_time_samples * 1
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
-        p_el.astype(np.float64)
+        # p_el.astype(np.float64)
 
         # generate curve of bytes
         curve_exp = 1.0

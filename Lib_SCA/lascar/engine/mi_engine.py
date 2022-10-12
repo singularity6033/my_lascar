@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import integrate
 from sklearn.neighbors import KernelDensity
 
 from .engine import Engine
@@ -12,7 +13,7 @@ class MiEngine(Engine):
     2011 IEEE 24th Computer Security Foundations Symposium. IEEE, 2011.
     """
 
-    def __init__(self, name, kernel='epanechnikov', jit=True):
+    def __init__(self, name, kernel='epanechnikov', jit=False):
         """
         MiEngine
         :param name: name of the engine
@@ -23,7 +24,8 @@ class MiEngine(Engine):
         Engine.__init__(self, name)
 
     def _initialize(self):
-        self._mutual_information = np.zeros((1, ) + self._session.leakage_shape, dtype=np.double, )
+        self._mutual_information = np.zeros(self._session.leakage_shape, dtype=np.double, )
+        self._batch_count = np.zeros(self._session.leakage_shape, dtype=np.int32, )
 
         self.size_in_memory += self._mutual_information.nbytes
 
@@ -61,24 +63,42 @@ class MiEngine(Engine):
         2. we assume the distribution of input secret x (plaintext) is known as an uniform distribution has a pmf with
         1 / (b-a+1), although we have more than one plaintext in one trace, as pmf of uniform distribution is always a
         constant, we see them in one uniform distribution with range [0, 255], so the p(x) = 1/256 (constant)
-        3. we use the equation 4 in the paper to calculate mutual information
+        3. we use the equation 4 in the paper to calculate continuous mutual information
         """
         batch_leakages = batch.leakages
         batch_size = batch_leakages.shape[0]
+        time_samples = batch_leakages.shape[1]
         p_x = 1.0 / 256
-        bandwidth = 1.06 * np.sqrt(np.var(np.var(batch_leakages))) * batch_size ** (-1 / 5)
-        kde = KernelDensity(kernel=self.kernel, bandwidth=bandwidth).fit(batch_leakages)
-        log_p_yx = kde.score_samples(batch_leakages)
-        p_yx = np.exp(log_p_yx)
-        sum_term = np.sum(p_yx, axis=0)
-        log_term = np.log(p_yx / (p_x * np.array(sum_term, ndmin=2)))
-        # self._mutual_information +=
+        for i in range(time_samples):
+            bandwidth = 1.06 * np.sqrt(np.var(batch_leakages[:, i])) * batch_size ** (-1 / 5)
+            lk = np.array(batch_leakages[:, i], ndmin=2).T
+            kde = KernelDensity(kernel=self.kernel, bandwidth=bandwidth).fit(lk)
+            log_p_yx = kde.score_samples(lk)
+            p_yx = np.exp(log_p_yx)
+            sum_term = np.sum(p_yx, axis=0) * p_x
+            lower_bound = min(batch_leakages[:, i])
+            upper_bound = max(batch_leakages[:, i])
+
+            # integration part
+            # function build
+            def f(x, pdf, s_term):
+                x = np.ones((1, 1)) * x
+                pyx = np.exp(pdf.score_samples(x))
+                if not pyx:
+                    return 0.0
+                else:
+                    return pyx * np.log(pyx / s_term)
+
+            integrate_term = integrate.quad(f, lower_bound, upper_bound, args=(kde, sum_term))[0]
+            self._mutual_information[i] += batch_size * p_x * integrate_term
+            self._batch_count[i] += 1
 
     def _finalize(self):
-        pass
+        return self._mutual_information / self._batch_count
 
     def _clean(self):
         del self._mutual_information
+        del self._batch_count
         self.size_in_memory = 0
 
 
