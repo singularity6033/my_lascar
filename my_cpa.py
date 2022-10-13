@@ -8,12 +8,14 @@ It needs:
 - a "guess_range" which will define what are the guess possible values
 
 """
+from matplotlib import pyplot as plt
+
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import CpaEngine, hamming, Session, MatPlotLibOutputMethod, numerical_success_rate
 from Lib_SCA.lascar.tools.aes import sbox
 
 
-def cpa_attack(mode, config_name, no_of_guesses=16, engine_name='cpa', batch_size=2500):
+def cpa_attack(mode, config_name, no_of_guesses=256, idx_correct_key=-1,  engine_name='cpa', batch_size=2500):
     if mode == 'normal':
         container = SimulatedPowerTraceContainer(config_name)
     elif mode == 'fix_random':
@@ -29,19 +31,32 @@ def cpa_attack(mode, config_name, no_of_guesses=16, engine_name='cpa', batch_siz
 
     cpa_engine = CpaEngine(engine_name, selection_function, guess_range)
 
-    session = Session(
-        container, engine=cpa_engine, output_method=MatPlotLibOutputMethod(cpa_engine)
-    )
+    session = Session(container, engine=cpa_engine)
 
     session.run(batch_size=batch_size)
     results = cpa_engine.finalize()
-    print(numerical_success_rate(distinguish_vector=results, correct_key=0, order=1).eval())
+
+    # plotting
+    plt.figure(0)
+    plt.title(engine_name)
+    plt.xlabel('time')
+    if idx_correct_key == -1:
+        plt.plot(results.T)
+    else:
+        for i in range(results.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(results[i, :], color='tab:gray')
+        plt.plot(results[idx_correct_key, :], color='red')
+    plt.show()
+
+    # print(numerical_success_rate(distinguish_vector=results, correct_key=0, order=1).eval())
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cpa_attack(mode='normal',
                config_name='normal_simulated_traces.yaml',
-               no_of_guesses=4,
+               no_of_guesses=256,
+               idx_correct_key=0,  # the index of correct key guess
                engine_name='cpa',
                batch_size=2500)

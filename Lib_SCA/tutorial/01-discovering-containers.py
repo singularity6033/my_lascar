@@ -1,3 +1,4 @@
+from Lib_SCA.lascar import CenteredProductProcessing, PcaProcessing
 from Lib_SCA.lascar.container import Trace, TraceBatchContainer
 import numpy as np
 

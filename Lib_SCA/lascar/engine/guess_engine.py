@@ -27,9 +27,9 @@ from . import Engine
 class GuessEngine(Engine):
     """
     GuessEngine is a specialized Engine which is used when dealing with Side-Channel Analysis
-     involving a guess guess (such as Dpa, Cpa, Mia, Template matching, ...).
+    involving a guess guess (such as Dpa, Cpa, Mia, Template matching, ...).
 
-     It requires a selection_function taking as an input the trace value and a guess guess which lives in guess_range.
+    It requires a selection_function taking as an input the trace value and a guess guess which lives in guess_range.
 
     In the case where the solution is known, it can be passed as an argument.
     """

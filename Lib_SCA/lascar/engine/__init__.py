@@ -40,7 +40,7 @@ from .classifier_engine import save_classifier
 from .classifier_engine import load_classifier
 
 from .dom_engine import DomEngine
-from .mi_engine import MiEngine
+from .mi_engine import CMI_Engine
 from .success_rate_engine import numerical_success_rate
 
 # from .template_engine import TemplateProfileEngine

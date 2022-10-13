@@ -167,9 +167,12 @@ class AesSimulationContainer(AbstractContainer):
 
 class SimulatedPowerTraceContainer(AbstractContainer):
 
-    def __init__(self, config_file_name='normal_simulated_traces.yaml', seed=1337, **kwargs):
+    def __init__(self, number_of_traces=None, config_file_name='normal_simulated_traces.yaml', seed=1337, **kwargs):
         params = TraceConfig().get_config(config_file_name)
-        self.number_of_traces = params['number_of_traces']
+        if number_of_traces:
+            self.number_of_trace = number_of_traces
+        else:
+            self.number_of_traces = params['number_of_traces']
         self.number_of_bytes = params['number_of_bytes']
         self.number_of_time_samples = params['number_of_time_samples']
         self.attack_sample_point = params['attack_sample_point']
@@ -248,12 +251,14 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                 cipher[i] = self.leakage_model(sbox_output)
             # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
-            r_bytes = r_bytes.repeat(self.no_time_samples, axis=1)
+            if self.masking:
+                r_bytes = r_bytes.repeat(self.no_time_samples, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
+        if self.masking:
+            value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
@@ -349,9 +354,12 @@ class SimulatedPowerTraceContainer(AbstractContainer):
 
 class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
-    def __init__(self, config_file_name='fixed_random_traces.yaml', seed=1337, **kwargs):
+    def __init__(self, number_of_traces=None, config_file_name='fixed_random_traces.yaml', seed=1337, **kwargs):
         params = TraceConfig().get_config(config_file_name)
-        self.number_of_traces = params['number_of_traces']
+        if number_of_traces:
+            self.number_of_trace = number_of_traces
+        else:
+            self.number_of_traces = params['number_of_traces']
         self.fixed_set = params['fixed_set']
         self.number_of_bytes = params['number_of_bytes']
         self.number_of_time_samples = params['number_of_time_samples']
@@ -365,7 +373,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
         self.noise_sigma_el = params['noise_sigma_el']
         self.noise_mean_el = params['noise_mean_el']
-        self.no_time_samples = params['number_of_time_samplesR']
+        self.no_time_samples = params['number_of_time_samples']
         self.constant = float(params['constant'])
         self.sp_curve = params['sp_curve']
         self.bytes_curve = params['bytes_curve']
@@ -435,14 +443,16 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                     for j in range(self.number_of_masking_bytes):
                         sbox_output ^= value["mask"][i][j]
                 cipher[i] = self.leakage_model(sbox_output)
-                r_bytes[i] += self.leakage_model(value["mask"][i][j])
+                if self.masking:
+                    r_bytes[i] += self.leakage_model(value["mask"][i][j])
             # # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
+        if self.masking:
+            value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)

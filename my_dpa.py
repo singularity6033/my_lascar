@@ -6,7 +6,7 @@ from Lib_SCA.lascar import Session
 import matplotlib.pyplot as plt
 
 
-def dpa_attack(mode, config_name, no_of_guesses=16, engine_name='dpa', batch_size=2500):
+def dpa_attack(mode, config_name, no_of_guesses=256, idx_correct_key=-1, engine_name='dpa', batch_size=2500):
     if mode == 'normal':
         container = SimulatedPowerTraceContainer(config_name)
     elif mode == 'fix_random':
@@ -24,6 +24,7 @@ def dpa_attack(mode, config_name, no_of_guesses=16, engine_name='dpa', batch_siz
     a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
 
     def selection_function(value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point):
+        # LSB
         return sbox[value["plaintext"][attack_byte][attack_time] ^ guess] & 1
 
     guess_range = range(no_of_guesses)
@@ -45,16 +46,24 @@ def dpa_attack(mode, config_name, no_of_guesses=16, engine_name='dpa', batch_siz
     """
     results = dpa_engine.finalize()
 
-    print("Best Guess is %02X." % results.max(1).argmax())
-
-    plt.plot(results.T)
-    plt.legend(['byte_' + str(i) for i in range(no_of_guesses)])
+    # plotting
+    plt.figure(0)
+    plt.title(engine_name)
+    plt.xlabel('time')
+    if idx_correct_key == -1:
+        plt.plot(results.T)
+    else:
+        for i in range(results.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(results[i, :], color='tab:gray')
+        plt.plot(results[idx_correct_key, :], color='red')
     plt.show()
 
 
 if __name__ == '__main__':
     dpa_attack(mode='normal',
                config_name='normal_simulated_traces.yaml',
-               no_of_guesses=2,
+               no_of_guesses=256,
+               idx_correct_key=0,  # the index of correct key guess
                engine_name='dpa',
                batch_size=2500)
