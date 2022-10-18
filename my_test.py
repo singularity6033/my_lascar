@@ -2,7 +2,7 @@ from math import inf
 
 import numpy as np
 from scipy import integrate
-from scipy.stats import mvn, multivariate_normal, binom
+from scipy.stats import mvn, multivariate_normal, binom, norm
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
 from pyitlib import discrete_random_variable as drv
@@ -10,10 +10,9 @@ from pyitlib import discrete_random_variable as drv
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 import matplotlib.pyplot as plt
 
-container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
+# container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
 # container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
-yyy = container[:3000].leakages
-
+# yyy = container[:3000].leakages
 
 #
 # container.plot_traces(list(range(container.number_of_traces)))
@@ -61,20 +60,20 @@ yyy = container[:3000].leakages
 # y = kde.score_samples(np.ones((1, 1)) * 1.5)
 # z = kde.score_samples(x)
 
-
+z = norm.cdf(1, loc=1, scale=0.16)
 # def f(x, kde):
 #     x = np.ones((1, 1)) * x
 #     return np.exp(kde.score_samples(x))
-def f(x):
-    return x ** 2
-#
-#
-x = np.linspace(0, 100, 4)
-y = f(x)
-print(integrate.simpson(y, x))
-# print(integrate.simpson(y, dx=0.5))
-print(np.sum(y))
-print(100 ** 3 / 3)
+# def f(x):
+#     return x ** 2
+# #
+# #
+# x = np.linspace(0, 100, 4)
+# y = f(x)
+# print(integrate.simpson(y, x))
+# # print(integrate.simpson(y, dx=0.5))
+# print(np.sum(y))
+# print(100 ** 3 / 3)
 # print(integrate.trapezoid(y, x))
 
 # v = integrate.quad(f, 1, 50, args=kde)
