@@ -21,6 +21,8 @@ container.py
 """
 
 import logging
+from typing import Optional, Any
+
 import numpy as np
 from tqdm import tqdm
 from collections import namedtuple
@@ -113,6 +115,7 @@ class Container:
 
     :param number_of_traces:
     """
+    leakage_section: Optional[Any]
 
     def __init__(self, **kwargs):
         """
