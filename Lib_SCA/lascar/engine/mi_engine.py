@@ -108,12 +108,14 @@ class CMI_Engine(GuessEngine):
     def _cal_mutual_information(self, p_x, p_x_set, lk, batch_size):
         kde_set = []  # for each element in set, estimate corresponding pdf of y
         lk_set = []
+        sum_term = 0
         # calculate related terms
         for k1 in range(p_x_set.shape[0]):
             index = np.where(p_x == p_x_set[k1])
             lk_set_i = lk[index]
             bandwidth = 1.06 * np.sqrt(np.var(lk)) * batch_size ** (-1 / 5)
             kde = KernelDensity(kernel=self.kernel, bandwidth=bandwidth).fit(lk_set_i)
+            # sum_term += np.sum(p_x_set[k1] * kde.score_samples(lk_set_i))
             kde_set.append(kde)
             lk_set.append(lk_set_i)
         cmi = 0

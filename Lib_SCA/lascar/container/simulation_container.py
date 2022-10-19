@@ -263,7 +263,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
-        p_el = np.random.multivariate_normal(mean_el, cov_el).T  # no_time_samples * 1
+        p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -347,7 +347,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         plt.xlabel('time')
         plt.xticks(np.arange(0, self.number_of_time_samples, 1))
         plt.ylabel('power')
-        for i in tqdm(range(idx_traces[0], idx_traces[-1])):
+        for i in tqdm(range(idx_traces)):
             plt.plot(self[i].leakage)
         plt.show()
 
