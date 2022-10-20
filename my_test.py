@@ -1,6 +1,7 @@
 from math import inf
 
 import numpy as np
+import sklearn.feature_selection
 from scipy import integrate
 from scipy.stats import mvn, multivariate_normal, binom, norm
 from Lib_SCA.lascar import numerical_success_rate
@@ -28,7 +29,10 @@ import matplotlib.pyplot as plt
 # plt.plot(snr_real)
 # plt.legend(['theoretical snr', 'actual snr'])
 # plt.show()
+x = np.random.normal(0, 1.0, (1000, 1))
+y = np.random.normal(0, 1.0, (1000, ))
 
+z = sklearn.feature_selection.mutual_info_regression(x, y)
 # mean = np.array([0.5, 0.5, 0.3]).T
 # cov = np.array([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.25, 0.3, 1]]).T
 # dis = multivariate_normal(mean=mean, cov=cov)
@@ -60,7 +64,7 @@ import matplotlib.pyplot as plt
 # y = kde.score_samples(np.ones((1, 1)) * 1.5)
 # z = kde.score_samples(x)
 
-z = norm.cdf(1, loc=1, scale=0.16)
+# z = norm.cdf(1, loc=1, scale=0.16)
 # def f(x, kde):
 #     x = np.ones((1, 1)) * x
 #     return np.exp(kde.score_samples(x))
@@ -86,9 +90,13 @@ z = norm.cdf(1, loc=1, scale=0.16)
 # aa = np.ones((3, 2))
 # print(aa[:, 1].shape)
 #
-# a = [1, 2, 3, 2, 2, 1, 4, 3]
-# b = [1, 2, 3, 4, 5, 6, 7, 8]
-# a1 = np.array(a)
+a = [1, 2, 3, 2, 2, 1, 4, 3]
+b = [1, 2, 3, 4, 5, 6, 7, 8]
+a = np.array(a)
+a1 = np.copy(a)
+np.random.shuffle(a)
+print(a)
+print(a1)
 # b = np.array(b, ndmin=2).T
 # ua1 = np.unique(a1, axis=0)
 # d = np.where(a1 == ua1[0])

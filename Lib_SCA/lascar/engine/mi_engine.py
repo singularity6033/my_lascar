@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import e
 from scipy import integrate
 from sklearn.neighbors import KernelDensity
 from scipy.stats import binom
@@ -41,16 +42,16 @@ class CMI_Engine(GuessEngine):
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
 
     def _initialize(self):
-        if self.contain_test:
-            self._mutual_information = np.zeros((self._number_of_guesses,
-                                                 self.num_shuffles + 1) + self._session.leakage_shape, np.double)
-            self._batch_count = np.zeros((self._number_of_guesses,
-                                          self.num_shuffles + 1) + self._session.leakage_shape, dtype=np.int32, )
-        else:
-            self._mutual_information = np.zeros((self._number_of_guesses, ) + self._session.leakage_shape, np.double)
-            self._batch_count = np.zeros((self._number_of_guesses, ) + self._session.leakage_shape, dtype=np.int32, )
+        self._mutual_information = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
+        self._mutual_information_ref = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
+        self._p_value = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
+        self._p_value_ref = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
+        self._batch_count = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, dtype=np.int32, )
 
         self.size_in_memory += self._mutual_information.nbytes
+        self.size_in_memory += self._mutual_information_ref.nbytes
+        self.size_in_memory += self._p_value.nbytes
+        self.size_in_memory += self._p_value_ref.nbytes
         self.size_in_memory += self._batch_count.nbytes
 
     def _update(self, batch):
@@ -64,39 +65,61 @@ class CMI_Engine(GuessEngine):
         batch_leakages = batch.leakages
         batch_size = batch_leakages.shape[0]
         time_samples = batch_leakages.shape[1]
-        # p_x (binomial distribution)
+        # p_x (binomial distribution) - known
         p_x = binom.pmf(secret_x, n=8, p=0.5)
         for i in tqdm(range(self._number_of_guesses)):
             print('[INFO] Processing Key Guess', i)
-            p_x_set = np.unique(p_x[:, i])  # no repeated item
+            secret_x_i = secret_x[:, i]
+            p_x_i = p_x[:, i]
+            p_x_i_set = np.unique(p_x_i)  # no repeated item
             for j in tqdm(range(time_samples)):
+                secret_x_i_copy = np.copy(secret_x_i)
+                p_x_i_copy = np.copy(p_x_i)
                 lk_total = np.array(batch_leakages[:, j], ndmin=2).T
-                kde_set, cmi = self._cal_mutual_information(p_x[:, i], p_x_set, lk_total, batch_size)
-                if self.contain_test:
-                    # real mutual information
-                    self._mutual_information[i][0][j] += cmi
-                    self._batch_count[i][0][j] += 1
+                # bandwidth used in the kernel estimation
+                bandwidth = 1.06 * np.sqrt(np.var(lk_total)) * batch_size ** (-1 / 5)
+                # directly estimate p_y = sum(p_xi * p_yxi)
+                p_y = KernelDensity(kernel=self.kernel, bandwidth=bandwidth).fit(lk_total)
+                kde_set, cmi = self._cal_mutual_information(p_x_i, p_x_i_set, p_y, lk_total, bandwidth)
+                cmi_ref = self._cal_mutual_information_reference(secret_x_i, batch_leakages[:, j])
 
-                    # statistical test
-                    for l in range(1, self.num_shuffles + 1):
-                        np.random.shuffle(lk_total)
-                        cmi_t = self._cal_mutual_information_test(p_x[:, i], p_x_set, lk_total, kde_set)
-                        self._mutual_information[i][l][j] += cmi_t
-                        self._batch_count[i][l][j] += 1
-                else:
-                    # real mutual information
-                    self._mutual_information[i][j] += cmi
-                    self._batch_count[i][j] += 1
+                # mutual information statistic
+                self._mutual_information[i][j] += cmi
+                self._mutual_information_ref[i][j] += cmi_ref
+                self._batch_count[i][j] += 1
+
+                # statistical test
+                cmi_zero_leakages = np.zeros(self.num_shuffles)
+                cmi_zero_leakages_ref = np.zeros(self.num_shuffles)
+                for k in range(self.num_shuffles):
+                    np.random.shuffle(p_x_i_copy)
+                    np.random.shuffle(secret_x_i_copy)
+                    cmi_shuffle = self._cal_cmi_statistical_test(p_x_i_copy, p_x_i_set, p_y, kde_set, lk_total)
+                    cmi_shuffle_ref = self._cal_mutual_information_reference(secret_x_i_copy, batch_leakages[:, j])
+                    cmi_zero_leakages[k] = cmi_shuffle
+                    cmi_zero_leakages_ref[k] = cmi_shuffle_ref
+
+                # theorem 1
+                c1 = np.mean(cmi_zero_leakages)
+                c2 = np.var(cmi_zero_leakages)
+                m = c1 * np.log2(np.e) / (batch_size * bandwidth)
+                v = np.sqrt(c2 * np.power(np.log2(np.e), 2) / ((batch_size ** 2) * bandwidth ** (-1)))
+                c1_ref = np.mean(cmi_zero_leakages_ref)
+                c2_ref = np.var(cmi_zero_leakages_ref)
+                m_ref = c1_ref * np.log2(np.e) / (batch_size * bandwidth)
+                v_ref = np.sqrt(c2_ref * np.power(np.log2(np.e), 2) / ((batch_size ** 2) * bandwidth ** (-1)))
+                from scipy.stats import norm
+                p_value = 2 * norm.cdf(cmi, loc=m, scale=v) if cmi < m else 2 * (1 - norm.cdf(cmi, loc=m, scale=v))
+                p_value_ref = 2 * norm.cdf(cmi_ref, loc=m_ref, scale=v_ref) if cmi_ref < m_ref else\
+                    2 * (1 - norm.cdf(cmi_ref, loc=m_ref, scale=v_ref))
+                self._p_value[i][j] += p_value
+                self._p_value_ref[i][j] += p_value_ref
 
     @staticmethod
-    def _cal_integration_term(lk, kde_set, p_x_set, set_id):
+    def _cal_integration_term(lk, p_yx, p_y):
         lk = np.array(lk, ndmin=2).T
-        cur_pdf = kde_set[set_id]
-        set_length = len(kde_set)
-        pyx = np.exp(cur_pdf.score_samples(lk))
-        sum_term = 0
-        for si in range(set_length):
-            sum_term += p_x_set[si] * np.exp(kde_set[si].score_samples(lk))
+        pyx = np.exp(p_yx.score_samples(lk))
+        sum_term = np.exp(p_y.score_samples(lk))
         # extreme value processing
         sum_term_mask = sum_term == 0.0
         sum_term[sum_term_mask] = 1.0
@@ -105,17 +128,14 @@ class CMI_Engine(GuessEngine):
         log_term[log_term_mask] = 1.0
         return pyx * np.log(log_term)
 
-    def _cal_mutual_information(self, p_x, p_x_set, lk, batch_size):
-        kde_set = []  # for each element in set, estimate corresponding pdf of y
+    def _cal_mutual_information(self, p_x, p_x_set, p_y, lk, bandwidth):
+        kde_set = []  # for each element in set, estimate corresponding pdf of yx
         lk_set = []
-        sum_term = 0
-        # calculate related terms
+        # calculate every p_yx and corresponding yx
         for k1 in range(p_x_set.shape[0]):
             index = np.where(p_x == p_x_set[k1])
             lk_set_i = lk[index]
-            bandwidth = 1.06 * np.sqrt(np.var(lk)) * batch_size ** (-1 / 5)
             kde = KernelDensity(kernel=self.kernel, bandwidth=bandwidth).fit(lk_set_i)
-            # sum_term += np.sum(p_x_set[k1] * kde.score_samples(lk_set_i))
             kde_set.append(kde)
             lk_set.append(lk_set_i)
         cmi = 0
@@ -123,12 +143,22 @@ class CMI_Engine(GuessEngine):
         for k2 in range(p_x_set.shape[0]):
             # integration part
             lk_series = np.unique(lk_set[k2])
-            f_lk = self._cal_integration_term(lk_series, kde_set, p_x_set, k2)
+            f_lk = self._cal_integration_term(lk_series, kde_set[k2], p_y)
             integrate_term = integrate.trapezoid(f_lk, lk_series)
             cmi += p_x_set[k2] * integrate_term
         return kde_set, cmi
 
-    def _cal_mutual_information_test(self, p_x, p_x_set, lk, kde_set):
+    @staticmethod
+    def _cal_mutual_information_reference(x, y):
+        """
+        using sklearn.feature_selection.mutual_info_regression to calculation between discrete x and continuous y
+        """
+        import sklearn.feature_selection
+        x = np.array(x, ndmin=2).T
+        cmi_ref = sklearn.feature_selection.mutual_info_regression(x, y)
+        return cmi_ref
+
+    def _cal_cmi_statistical_test(self, p_x, p_x_set, p_y, kde_set, lk):
         lk_set = []
         # calculate related terms
         for k1 in range(p_x_set.shape[0]):
@@ -140,25 +170,23 @@ class CMI_Engine(GuessEngine):
         for k2 in range(p_x_set.shape[0]):
             # integration part
             lk_series = np.unique(lk_set[k2])
-            f_lk = self._cal_integration_term(lk_series, kde_set, p_x_set, k2)
+            f_lk = self._cal_integration_term(lk_series, kde_set[k2], p_y)
             integrate_term = integrate.trapezoid(f_lk, lk_series)
             cmi += p_x_set[k2] * integrate_term
         return cmi
 
     def _finalize(self):
-        if self.contain_test:
-            mean_mi = self._mutual_information / self._batch_count
-            real_mi = mean_mi[:, 0, :]
-            for j in range(1, self.num_shuffles+1):
-                is_pass = mean_mi[:, j, :] < mean_mi[:, 0, :]
-                mean_mi[:, j, :] = is_pass
-            test_score = np.sum(mean_mi[:, 1:, :], axis=1)
-            return real_mi, test_score
-        else:
-            return self._mutual_information / self._batch_count
+        mi = self._mutual_information / self._batch_count
+        mi_ref = self._mutual_information_ref / self._batch_count
+        pv = self._p_value / self._batch_count
+        pv_ref = self._p_value_ref / self._batch_count
+        return mi, mi_ref, pv, pv_ref
 
     def _clean(self):
         del self._mutual_information
+        del self._mutual_information_ref
+        del self._p_value
+        del self._p_value_ref
         del self._batch_count
         self.size_in_memory = 0
 

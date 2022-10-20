@@ -34,42 +34,62 @@ def cmi(mode, config_name, no_of_guesses=256, idx_correct_key=-1, contain_test=T
     session = Session(container, engine=mi_engine)
 
     session.run(batch_size=batch_size)
-    if contain_test:
-        real_mi, test_score = mi_engine.finalize()
-    else:
-        real_mi = mi_engine.finalize()
+    mi, mi_ref, pv, pv_ref = mi_engine.finalize()
 
     # plotting
-    plt.figure(0)
-    plt.title(engine_name)
-    plt.xlabel('time')
-    plt.ylabel('continuous mutual information')
     if idx_correct_key == -1:
-        plt.plot(real_mi.T)
-    else:
-        for i in range(real_mi.shape[0]):
-            if i != idx_correct_key:
-                plt.plot(real_mi[i, :], color='tab:gray')
-        plt.plot(real_mi[idx_correct_key, :], color='red')
+        plt.figure(0)
+        plt.title(engine_name + '+mi')
+        plt.plot(mi.T)
         plt.show()
-        if contain_test:
-            # test score
-            plt.figure(1)
-            plt.title(engine_name)
-            plt.xlabel('time')
-            plt.ylabel('test score (%)')
-            for i in range(test_score.shape[0]):
-                if i != idx_correct_key:
-                    plt.plot(test_score[i, :], color='tab:gray')
-            plt.plot(test_score[idx_correct_key, :], color='red')
-            plt.show()
+        plt.figure(1)
+        plt.title(engine_name + '+mi_ref')
+        plt.plot(mi_ref.T)
+        plt.show()
+        plt.figure(2)
+        plt.title(engine_name + '+pv')
+        plt.plot(pv.T)
+        plt.show()
+        plt.figure(3)
+        plt.title(engine_name + '+pv_ref')
+        plt.plot(pv_ref.T)
+        plt.show()
+    else:
+        plt.figure(0)
+        plt.title(engine_name + '+mi')
+        for i in range(mi.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(mi[i, :], color='tab:gray')
+        plt.plot(mi[idx_correct_key, :], color='red')
+        plt.show()
+        plt.figure(1)
+        plt.title(engine_name + '+mi_ref')
+        for i in range(mi_ref.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(mi_ref[i, :], color='tab:gray')
+        plt.plot(mi_ref[idx_correct_key, :], color='red')
+        plt.show()
+        plt.figure(2)
+        plt.title(engine_name + '+pv')
+        for i in range(pv.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(pv[i, :], color='tab:gray')
+        plt.plot(pv[idx_correct_key, :], color='red')
+        plt.show()
+        plt.figure(3)
+        plt.title(engine_name + '+pv_ref')
+        for i in range(pv_ref.shape[0]):
+            if i != idx_correct_key:
+                plt.plot(pv_ref[i, :], color='tab:gray')
+        plt.plot(pv_ref[idx_correct_key, :], color='red')
+        plt.show()
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cmi(mode='normal',
         config_name='normal_simulated_traces.yaml',
-        no_of_guesses=4,
+        no_of_guesses=1,
         idx_correct_key=0,  # the index of correct key guess
         contain_test=False,
         engine_name='cmi',
