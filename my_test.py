@@ -37,13 +37,53 @@ import matplotlib.pyplot as plt
 #       for __ in range(10)]
 #      for ___ in range(10)]
 
-x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.2, 2.5, 3.1])
+x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.56, 2.5, 5], ndmin=2).T
+from collections import Counter
 
-hist = np.histogram(x, bins='auto')
-hist_dist = rv_histogram(hist)
+y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T
+# a = Counter(x.flatten())
+hist = np.histogram(x, bins=2)
+# hist_dist = rv_histogram(hist)
+# b = np.array([0.15, 0.8, 0.19])
+# print(np.concatenate((b, hist[0])))
+# print(min(a.keys()))
+# print(type((x, a)))
+# print(hist_dist.pdf([0.1, 0.3, 0.5]))
+from bisect import bisect_left
 
-print(hist_dist.pdf([0.1, 0.3, 0.5]))
 
+# print(bisect_left(np.array([-7.25000,-4.80000,-2.35000,0.10000,2.55000,5.00000,7.45000]), 5))
+
+
+# def update_hist(prev_hist, cur_data):
+#     """
+#         this update_hist function directly update the previous histogram based on the current data
+#         it may involve padding operations
+#         """
+#     old_hist = prev_hist[0]
+#     bin_edges = prev_hist[1]
+#     bin_size = np.diff(bin_edges)[0]
+#     min_boundary, max_boundary = np.min(bin_edges), np.max(bin_edges)
+#     counter_dic = Counter(cur_data.flatten())
+#     min_data, max_data = min(counter_dic.keys()), max(counter_dic.keys())
+#     left_pad, right_pad = list(), list()
+#     while min_data < min_boundary:
+#         min_boundary = min_boundary - bin_size
+#         left_pad.append(min_boundary)
+#     while max_data > max_boundary:
+#         max_boundary = max_boundary + bin_size
+#         right_pad.append(max_boundary)
+#     new_hist = np.concatenate((np.zeros(len(left_pad)), old_hist, np.zeros(len(right_pad))))
+#     new_bin_edges = np.concatenate((np.array(left_pad[::-1]), bin_edges, np.array(right_pad)))
+#     for data_i in cur_data:
+#         index = bisect_left(new_bin_edges, data_i) - 1
+#         new_hist[index] += 1
+#     res = (new_hist, new_bin_edges)
+#     return res
+
+# xx = update_hist(hist, y)
+
+# print(bisect_left(hist[1], b))
 # z = sklearn.feature_selection.mutual_info_regression(x, y)
 # mean = np.array([0.5, 0.5, 0.3]).T
 # cov = np.array([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.25, 0.3, 1]]).T

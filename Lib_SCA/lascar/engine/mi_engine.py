@@ -1,3 +1,6 @@
+from bisect import bisect_left
+from collections import Counter
+
 import numpy as np
 from numpy import e
 from scipy import integrate
@@ -65,9 +68,36 @@ class CMI_Engine_By_Histogram(GuessEngine):
         self.size_in_memory += self._p_value.nbytes
 
     @staticmethod
-    def merge_hist(cur_hist, prev_hist):
+    def update_hist(prev_hist, cur_data):
         """
-        this merging function is based on two assumptions:
+        this update_hist function directly update the previous histogram based on the current data
+        it may involve padding operations
+        """
+        old_hist = prev_hist[0]
+        bin_edges = prev_hist[1]
+        bin_size = np.diff(bin_edges)[0]
+        min_boundary, max_boundary = np.min(bin_edges), np.max(bin_edges)
+        counter_dic = Counter(cur_data.flatten())
+        min_data, max_data = min(counter_dic.keys()), max(counter_dic.keys())
+        left_pad, right_pad = list(), list()
+        while min_data < min_boundary:
+            min_boundary = min_boundary - bin_size
+            left_pad.append(min_boundary)
+        while max_data > max_boundary:
+            max_boundary = max_boundary + bin_size
+            right_pad.append(max_boundary)
+        new_hist = np.concatenate((np.zeros(len(left_pad)), old_hist, np.zeros(len(right_pad))))
+        new_bin_edges = np.concatenate((np.array(left_pad[::-1]), bin_edges, np.array(right_pad)))
+        for data_i in cur_data:
+            index = bisect_left(new_bin_edges, data_i) - 1
+            new_hist[index] += 1
+        res = (new_hist, new_bin_edges)
+        return res
+
+    @staticmethod
+    def merge_hist(prev_hist, cur_hist):
+        """
+        this merge_hist function is based on two assumptions:
         1. Recovered values are represented by the start of the bin they belong to.
         2. The merge shall keep the highest bin resolution to avoid further loss of information
         and shall completely encompass the intervals of the children histograms.
@@ -155,7 +185,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
             else:
                 current_hist_yx = np.histogram(y_x, bins='auto')
                 previous_hist_yx = self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
-                update_hist_yx = self.merge_hist(current_hist_yx, previous_hist_yx)
+                update_hist_yx = self.merge_hist(previous_hist_yx, current_hist_yx)
                 self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = update_hist_yx
 
             # if the y_x is firstly stored
@@ -221,7 +251,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
 
                 # statistical test
                 cmi_zero_leakages = np.zeros(self.num_shuffles)
-                for k in range(1, self.num_shuffles+1):
+                for k in range(1, self.num_shuffles + 1):
                     p_y = self.pdfs_for_py[i][k][j]
                     p_yx = self.pdfs_for_pyx[i][k][j]  # list
                     yx = self.y_x[i][k][j]  # list
@@ -230,7 +260,8 @@ class CMI_Engine_By_Histogram(GuessEngine):
                 # theorem 1
                 m = np.mean(cmi_zero_leakages)
                 v = np.std(cmi_zero_leakages)
-                p_value = 2 * norm.cdf(real_cmi, loc=m, scale=v) if real_cmi < m else 2 * (1 - norm.cdf(real_cmi, loc=m, scale=v))
+                p_value = 2 * norm.cdf(real_cmi, loc=m, scale=v) if real_cmi < m else 2 * (
+                            1 - norm.cdf(real_cmi, loc=m, scale=v))
                 self._p_value[i][j] = p_value
         return self._mutual_information, self._p_value
 
