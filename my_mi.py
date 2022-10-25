@@ -8,6 +8,7 @@ It needs:
 - a "guess_range" which will define what are the guess possible values
 
 """
+import numpy as np
 from matplotlib import pyplot as plt
 
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
@@ -15,7 +16,14 @@ from Lib_SCA.lascar import CMI_Engine, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 
 
-def cmi(mode, config_name, no_of_guesses=256, idx_correct_key=-1, contain_test=True, engine_name='cmi', batch_size=2500):
+def cmi(mode,
+        config_name,
+        no_of_guesses=256,
+        idx_correct_key=-1,
+        engine_name='cmi',
+        num_shuffles=100,
+        batch_size=2500):
+
     if mode == 'normal':
         container = SimulatedPowerTraceContainer(config_name)
     elif mode == 'fix_random':
@@ -29,7 +37,10 @@ def cmi(mode, config_name, no_of_guesses=256, idx_correct_key=-1, contain_test=T
 
     guess_range = range(no_of_guesses)
 
-    mi_engine = CMI_Engine(engine_name, selection_function, guess_range, contain_test=contain_test)
+    mi_engine = CMI_Engine(engine_name,
+                           selection_function,
+                           guess_range,
+                           num_shuffles=num_shuffles)
 
     session = Session(container, engine=mi_engine)
 
@@ -73,15 +84,15 @@ def cmi(mode, config_name, no_of_guesses=256, idx_correct_key=-1, contain_test=T
         plt.title(engine_name + '+pv')
         for i in range(pv.shape[0]):
             if i != idx_correct_key:
-                plt.plot(pv[i, :], color='tab:gray')
-        plt.plot(pv[idx_correct_key, :], color='red')
+                plt.plot(-np.log(pv[i, :]), color='tab:gray')
+        plt.plot(-np.log(pv[idx_correct_key, :]), color='red')
         plt.show()
         plt.figure(3)
         plt.title(engine_name + '+pv_ref')
         for i in range(pv_ref.shape[0]):
             if i != idx_correct_key:
-                plt.plot(pv_ref[i, :], color='tab:gray')
-        plt.plot(pv_ref[idx_correct_key, :], color='red')
+                plt.plot(-np.log(pv_ref[i, :]), color='tab:gray')
+        plt.plot(-np.log(pv_ref[idx_correct_key, :]), color='red')
         plt.show()
 
 
@@ -89,8 +100,8 @@ if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cmi(mode='normal',
         config_name='normal_simulated_traces.yaml',
-        no_of_guesses=1,
+        no_of_guesses=2,
         idx_correct_key=0,  # the index of correct key guess
-        contain_test=False,
         engine_name='cmi',
+        num_shuffles=50,
         batch_size=3000)
