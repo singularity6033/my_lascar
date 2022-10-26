@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import CMI_Engine, hamming, Session, MatPlotLibOutputMethod
+from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 
 
@@ -21,9 +21,9 @@ def cmi(mode,
         no_of_guesses=256,
         idx_correct_key=-1,
         engine_name='cmi',
+        num_bins=5,
         num_shuffles=100,
         batch_size=2500):
-
     if mode == 'normal':
         container = SimulatedPowerTraceContainer(config_name)
     elif mode == 'fix_random':
@@ -37,15 +37,16 @@ def cmi(mode,
 
     guess_range = range(no_of_guesses)
 
-    mi_engine = CMI_Engine(engine_name,
-                           selection_function,
-                           guess_range,
-                           num_shuffles=num_shuffles)
+    mi_engine = CMI_Engine_By_Histogram(engine_name,
+                                        selection_function,
+                                        guess_range,
+                                        num_bins=num_bins,
+                                        num_shuffles=num_shuffles)
 
     session = Session(container, engine=mi_engine)
 
     session.run(batch_size=batch_size)
-    mi, mi_ref, pv, pv_ref = mi_engine.finalize()
+    mi, pv = mi_engine.finalize()
 
     # plotting
     if idx_correct_key == -1:
@@ -53,17 +54,10 @@ def cmi(mode,
         plt.title(engine_name + '+mi')
         plt.plot(mi.T)
         plt.show()
-        plt.figure(1)
-        plt.title(engine_name + '+mi_ref')
-        plt.plot(mi_ref.T)
         plt.show()
-        plt.figure(2)
+        plt.figure(1)
         plt.title(engine_name + '+pv')
         plt.plot(pv.T)
-        plt.show()
-        plt.figure(3)
-        plt.title(engine_name + '+pv_ref')
-        plt.plot(pv_ref.T)
         plt.show()
     else:
         plt.figure(0)
@@ -74,25 +68,11 @@ def cmi(mode,
         plt.plot(mi[idx_correct_key, :], color='red')
         plt.show()
         plt.figure(1)
-        plt.title(engine_name + '+mi_ref')
-        for i in range(mi_ref.shape[0]):
-            if i != idx_correct_key:
-                plt.plot(mi_ref[i, :], color='tab:gray')
-        plt.plot(mi_ref[idx_correct_key, :], color='red')
-        plt.show()
-        plt.figure(2)
         plt.title(engine_name + '+pv')
         for i in range(pv.shape[0]):
             if i != idx_correct_key:
-                plt.plot(-np.log(pv[i, :]), color='tab:gray')
-        plt.plot(-np.log(pv[idx_correct_key, :]), color='red')
-        plt.show()
-        plt.figure(3)
-        plt.title(engine_name + '+pv_ref')
-        for i in range(pv_ref.shape[0]):
-            if i != idx_correct_key:
-                plt.plot(-np.log(pv_ref[i, :]), color='tab:gray')
-        plt.plot(-np.log(pv_ref[idx_correct_key, :]), color='red')
+                plt.plot(pv[i, :], color='tab:gray')
+        plt.plot(pv[idx_correct_key, :], color='red')
         plt.show()
 
 
@@ -103,5 +83,6 @@ if __name__ == '__main__':
         no_of_guesses=2,
         idx_correct_key=0,  # the index of correct key guess
         engine_name='cmi',
-        num_shuffles=50,
+        num_bins=5,
+        num_shuffles=100,
         batch_size=3000)

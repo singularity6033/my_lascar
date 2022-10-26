@@ -38,6 +38,8 @@ import matplotlib.pyplot as plt
 #      for ___ in range(10)]
 
 x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.56, 2.5, 5], ndmin=2).T
+print(isinstance(x, np.ndarray))
+print(np.unique(x))
 from collections import Counter
 
 y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T
@@ -95,7 +97,8 @@ from bisect import bisect_left
 # x = np.array([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.25, 0.3, 1]])
 # y = numerical_success_rate(x, 0, 5).eval()
 
-# x = np.random.binomial(n=8, p=0.5, size=(1000, 1))
+x = np.random.binomial(n=8, p=0.5, size=(1000, 1))
+p_x = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], n=8, p=0.5)
 # x = np.random.normal(0, 1.0, (1000, 1))
 # y = np.sum(x, axis=0)
 # print(x[0, 9])

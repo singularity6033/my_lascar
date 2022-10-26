@@ -26,6 +26,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                  name,
                  selection_function,
                  guess_range,
+                 num_bins=5,
                  num_shuffles=100,
                  solution=None,
                  jit=True):
@@ -34,28 +35,15 @@ class CMI_Engine_By_Histogram(GuessEngine):
         :param name: name of the engine
         :param selection_function: takes a value and a guess_guess as input,
                returns a modelisation of the leakage for this (value/guess).
+        :param num_bins: number of bins used in initialization of histogram estimation
         :param guess_range: what are the values for the guess guess
         :param num_shuffles: testing times used to obtain the reasonable statistical value
         """
+        self.num_bins = num_bins
         self.num_shuffles = num_shuffles
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
 
     def _initialize(self):
-        # 4 dimensional list to store each pyx and yx for each key guess, test, time sample and secret x value (hamming)
-        self.pdfs_for_pyx = [[[[None] * 9
-                               for _ in range(self._session.leakage_shape)]
-                              for __ in range(self.num_shuffles + 1)]
-                             for ___ in range(self._number_of_guesses)]
-        self.y_x = [[[[None] * 9
-                      for _ in range(self._session.leakage_shape)]
-                     for __ in range(self.num_shuffles + 1)]
-                    for ___ in range(self._number_of_guesses)]
-
-        # 3 dimensional list to store each py for each key guess, test, time sample
-        self.pdfs_for_py = [[[None] * self._session.leakage_shape
-                             for _ in range(self.num_shuffles + 1)]
-                            for __ in range(self._number_of_guesses)]
-
         self.y_total = None
         self.secret_x = None
 
@@ -63,6 +51,19 @@ class CMI_Engine_By_Histogram(GuessEngine):
         self._p_value = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
 
         self.number_of_time_samples = self._mutual_information.shape[0]
+
+        # 4 dimensional list to store each pyx and yx for each key guess, test, time sample and secret x value (hamming)
+        self.pdfs_for_pyx = [[[[None] * 9
+                               for _ in range(self.number_of_time_samples)]
+                              for __ in range(self.num_shuffles + 1)]
+                             for ___ in range(self._number_of_guesses)]
+        self.y_x = [[[[None] * 9
+                      for _ in range(self.number_of_time_samples)]
+                     for __ in range(self.num_shuffles + 1)]
+                    for ___ in range(self._number_of_guesses)]
+
+        # 3 dimensional list to store each py for each key guess, test, time sample
+        self.pdfs_for_py = [[None] * self.number_of_time_samples for _ in range(self._number_of_guesses)]
 
         self.size_in_memory += self._mutual_information.nbytes
         self.size_in_memory += self._p_value.nbytes
@@ -131,14 +132,14 @@ class CMI_Engine_By_Histogram(GuessEngine):
         """
         secret_x = self._mapfunction(self._guess_range, batch.values)  # batch_size * guess_range
         # store the total secret x
-        if not self.secret_x:
+        if not isinstance(self.secret_x, np.ndarray):
             self.secret_x = secret_x
         else:
             self.secret_x = np.concatenate((self.secret_x, secret_x), axis=0)
 
         batch_leakages = batch.leakages
         # store the total y
-        if not self.y_total:
+        if not isinstance(self.y_total, np.ndarray):
             self.y_total = batch_leakages
         else:
             self.y_total = np.concatenate((self.y_total, batch_leakages), axis=0)
@@ -152,20 +153,20 @@ class CMI_Engine_By_Histogram(GuessEngine):
                 y = np.array(batch_leakages[:, j], ndmin=2).T
 
                 # estimate the histogram of p_y for current batch
-                if not self.pdfs_for_py[i][0][j]:
-                    current_hist_y = np.histogram(y, bins='auto')
-                    self.pdfs_for_py[i][0][j] = current_hist_y
+                if not self.pdfs_for_py[i][j]:
+                    current_hist_y = np.histogram(y, bins=self.num_bins)
+                    self.pdfs_for_py[i][j] = current_hist_y
                 else:
-                    current_hist_y = np.histogram(y, bins='auto')
-                    previous_hist_y = self.pdfs_for_pyx[i][0][j]
-                    update_hist_y = self.merge_hist(current_hist_y, previous_hist_y)
-                    self.pdfs_for_py[i][0][j] = update_hist_y
+                    # current_hist_y = np.histogram(y, bins='auto')
+                    previous_hist_y = self.pdfs_for_py[i][j]
+                    update_hist_y = self.update_hist(previous_hist_y, y)
+                    self.pdfs_for_py[i][j] = update_hist_y
 
                 # estimate the histogram of p_y for current batch
                 self._histogram_estimation_p_yx(i, 0, j, y, secret_x_i, secret_x_i_set)
 
                 # statistical test
-                for k in range(1, self.num_shuffles + 1):
+                for k in tqdm(range(1, self.num_shuffles + 1)):
                     np.random.shuffle(secret_x_i_copy)
                     self._histogram_estimation_p_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
 
@@ -180,16 +181,16 @@ class CMI_Engine_By_Histogram(GuessEngine):
 
             # if the histogram of p_yx is firstly estimated
             if not self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]:
-                current_hist_yx = np.histogram(y_x, bins='auto')
+                current_hist_yx = np.histogram(y_x, bins=self.num_bins)
                 self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = current_hist_yx
             else:
-                current_hist_yx = np.histogram(y_x, bins='auto')
+                # current_hist_yx = np.histogram(y_x, bins='auto')
                 previous_hist_yx = self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
-                update_hist_yx = self.merge_hist(previous_hist_yx, current_hist_yx)
+                update_hist_yx = self.merge_hist(previous_hist_yx, y_x)
                 self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = update_hist_yx
 
             # if the y_x is firstly stored
-            if not self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val]:
+            if not isinstance(self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val], np.ndarray):
                 self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = y_x
             else:
                 prev = self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
@@ -209,54 +210,36 @@ class CMI_Engine_By_Histogram(GuessEngine):
         log_term[log_term_mask] = 1.0
         return pyx * np.log(log_term)
 
-    def _cal_mutual_information(self, p_x, p_y, p_yx, yx):
+    def _cal_mutual_information(self, p_y, p_yx, yx_total):
         # number of different x
         len_x = len(p_yx)
         cmi = 0
         # calculate eqn (4)
         for xi in range(len_x):
             # integration part
-            integrate_term = self._cal_integration_term(p_y, p_yx[xi], yx[xi])
-            integrate_res = integrate.trapezoid(integrate_term, yx[xi])
-            cmi += p_x[xi] * integrate_res
-        return cmi
-
-    def _cal_cmi_statistical_test(self, p_x, p_x_set, p_y, kde_set, lk):
-        lk_set = []
-        # calculate related terms
-        for k1 in range(p_x_set.shape[0]):
-            index = np.where(p_x == p_x_set[k1])
-            lk_set_i = lk[index]
-            lk_set.append(lk_set_i)
-        cmi = 0
-        # calculate eqn (4)
-        for k2 in range(p_x_set.shape[0]):
-            # integration part
-            lk_series = np.unique(lk_set[k2])
-            f_lk = self._cal_integration_term(lk_series, kde_set[k2], p_y)
-            integrate_term = integrate.trapezoid(f_lk, lk_series)
-            cmi += p_x_set[k2] * integrate_term
+            yx = np.unique(yx_total[xi])
+            integrate_term = self._cal_integration_term(p_y, p_yx[xi], yx)
+            integrate_res = integrate.trapezoid(integrate_term, yx)
+            cmi += binom.pmf(xi, n=8, p=0.5) * integrate_res
         return cmi
 
     def _finalize(self):
         for i in range(self._number_of_guesses):
             for j in range(self.number_of_time_samples):
-                p_x = binom.pmf(self.secret_x[:, i], n=8, p=0.5)
-                p_y = self.pdfs_for_py[i][0][j]
+                p_y = self.pdfs_for_py[i][j]
                 p_yx = self.pdfs_for_pyx[i][0][j]  # list
                 yx = self.y_x[i][0][j]  # list
                 # calculate real cmi
-                real_cmi = self._cal_mutual_information(p_x, p_y, p_yx, yx)
+                real_cmi = self._cal_mutual_information(p_y, p_yx, yx)
                 self._mutual_information[i][j] = real_cmi
 
                 # statistical test
                 cmi_zero_leakages = np.zeros(self.num_shuffles)
                 for k in range(1, self.num_shuffles + 1):
-                    p_y = self.pdfs_for_py[i][k][j]
                     p_yx = self.pdfs_for_pyx[i][k][j]  # list
                     yx = self.y_x[i][k][j]  # list
-                    cmi_shuffle = self._cal_mutual_information(p_x, p_y, p_yx, yx)
-                    cmi_zero_leakages[k] = cmi_shuffle
+                    cmi_shuffle = self._cal_mutual_information(p_y, p_yx, yx)
+                    cmi_zero_leakages[k-1] = cmi_shuffle
                 # theorem 1
                 m = np.mean(cmi_zero_leakages)
                 v = np.std(cmi_zero_leakages)
