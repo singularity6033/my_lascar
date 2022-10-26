@@ -24,8 +24,11 @@ def cmi(mode,
         num_bins=5,
         num_shuffles=100,
         batch_size=2500):
+
     if mode == 'normal':
-        container = SimulatedPowerTraceContainer(config_name)
+        container = SimulatedPowerTraceContainer(config_name,
+                                                 # seed=1
+                                                 )
     elif mode == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_name)
     a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
@@ -41,6 +44,7 @@ def cmi(mode,
                                         selection_function,
                                         guess_range,
                                         num_bins=num_bins,
+                                        # hist_mode='merge',
                                         num_shuffles=num_shuffles)
 
     session = Session(container, engine=mi_engine)
@@ -83,6 +87,6 @@ if __name__ == '__main__':
         no_of_guesses=2,
         idx_correct_key=0,  # the index of correct key guess
         engine_name='cmi',
-        num_bins=5,
-        num_shuffles=100,
+        num_bins=20,
+        num_shuffles=50,
         batch_size=3000)

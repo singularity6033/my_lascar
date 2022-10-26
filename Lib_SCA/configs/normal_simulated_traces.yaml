@@ -1,5 +1,5 @@
 # total number of traces
-number_of_traces: 3000
+number_of_traces: 30000
 
 # total number of bytes one trace has
 number_of_bytes: 1
