@@ -84,9 +84,9 @@ if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cmi(mode='normal',
         config_name='normal_simulated_traces.yaml',
-        no_of_guesses=2,
+        no_of_guesses=3,
         idx_correct_key=0,  # the index of correct key guess
         engine_name='cmi',
-        num_bins=20,
-        num_shuffles=50,
+        num_bins=10,
+        num_shuffles=100,
         batch_size=3000)
