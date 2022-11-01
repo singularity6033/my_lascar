@@ -14,4 +14,4 @@ engine_name: 'cpa'
 attack_range: range(0, 4)
 
 # batch size
-batch_size: 2500
+batch_size: 1000

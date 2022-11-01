@@ -16,23 +16,27 @@ from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session, MatPlotLib
 from Lib_SCA.lascar.tools.aes import sbox
 
 
+def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
+    return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
+
+
 def cmi(mode,
         config_name,
         no_of_guesses=256,
         idx_correct_key=-1,
         engine_name='cmi',
         num_bins=5,
+        hist_boundary=None,
         num_shuffles=100,
         batch_size=2500):
 
     if mode == 'normal':
-        container = SimulatedPowerTraceContainer(config_name,
-                                                 # seed=1
-                                                 )
+        container = SimulatedPowerTraceContainer(config_name)
     elif mode == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_name)
-    a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
 
+    # a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
+    a_byte = 0
     def selection_function(
             value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point
     ):  # selection_with_guess function must take 2 arguments: value and guess
@@ -44,7 +48,7 @@ def cmi(mode,
                                         selection_function,
                                         guess_range,
                                         num_bins=num_bins,
-                                        # hist_mode='merge',
+                                        hist_boundary=hist_boundary,
                                         num_shuffles=num_shuffles)
 
     session = Session(container, engine=mi_engine)
@@ -70,23 +74,28 @@ def cmi(mode,
             if i != idx_correct_key:
                 plt.plot(mi[i, :], color='tab:gray')
         plt.plot(mi[idx_correct_key, :], color='red')
-        plt.show()
+        # plt.show()
+        plt.savefig('./plots/mi_new.png')
         plt.figure(1)
         plt.title(engine_name + '+pv')
         for i in range(pv.shape[0]):
             if i != idx_correct_key:
                 plt.plot(pv[i, :], color='tab:gray')
         plt.plot(pv[idx_correct_key, :], color='red')
-        plt.show()
+        # plt.show()
+        plt.savefig('./plots/pv_new.png')
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cmi(mode='normal',
         config_name='normal_simulated_traces.yaml',
-        no_of_guesses=3,
+        no_of_guesses=2,
         idx_correct_key=0,  # the index of correct key guess
         engine_name='cmi',
-        num_bins=10,
-        num_shuffles=100,
-        batch_size=3000)
+        num_bins=calc_best_num_of_hist_bins(3, 1),
+        # num_bins=0,
+        # hist_boundary=[0, calc_best_num_of_hist_bins(3, 1)],
+        hist_boundary=None,
+        num_shuffles=10,
+        batch_size=100)

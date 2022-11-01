@@ -3,7 +3,7 @@ from math import inf
 import numpy as np
 import sklearn.feature_selection
 from scipy import integrate
-from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram
+from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
 from pyitlib import discrete_random_variable as drv
@@ -36,23 +36,43 @@ import matplotlib.pyplot as plt
 #        for _ in range(10)]
 #       for __ in range(10)]
 #      for ___ in range(10)]
-
-x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.56, 2.5, 5], ndmin=2).T
-print(isinstance(x, np.ndarray))
-print(np.unique(x))
+x = np.random.normal(0, 1.0, (1000, 3))
+c = np.random.randn(10, 18)
+y = x.tolist()
+# yy = [np.array(x[:, i]) for i in range(256)]
+x = [[1] * 1000 for _ in range(1000)]
+cov = np.array([[1, 2, 2, 3, 5], [1, 1, 1, 2, 5], [1, 2, 1, 4, 5], [1, 4, 4, 2, 5]])
+s = cov.tolist()
+# x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.56, 2.5, 5], ndmin=2).T
+# print(isinstance(x, np.ndarray))
+# print(np.unique(x))data
 from collections import Counter
 
-y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T
-# a = Counter(x.flatten())
-hist = np.histogram(x, bins=2)
-# hist_dist = rv_histogram(hist)
+# xcx = np.array([0, 1, 3])
+# covvv = cov[:, xcx]
+# y = np.zeros((1000000, 10000))
+# y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T
+# # a = Counter(x.flatten())
+hist = np.histogramdd(c, bins=2)
+# hist_count = hist[0]
+#
+# # pdff = rv_histogram(hist)
+# x = np.sum(hist_count, axis=(1, 2, 3))
+# a = np.vstack((x, np.sum(hist_count, axis=(0, 2, 3))))
+# b = np.vstack((a, np.sum(hist_count, axis=(0, 1, 3))))
+# c = np.vstack((b, np.sum(hist_count, axis=(0, 1, 2))))
+#
+# cl = c.tolist()
+# c1 = np.array(hist[1])
+
+# hist_dist = rv_histogram((cl, hist[1]))
+
 # b = np.array([0.15, 0.8, 0.19])
-# print(np.concatenate((b, hist[0])))
+# print(np.concatenate((b, hist[0]))) s
 # print(min(a.keys()))
 # print(type((x, a)))
 # print(hist_dist.pdf([0.1, 0.3, 0.5]))
 from bisect import bisect_left
-
 
 # print(bisect_left(np.array([-7.25000,-4.80000,-2.35000,0.10000,2.55000,5.00000,7.45000]), 5))
 
@@ -102,8 +122,8 @@ from bisect import bisect_left
 # x = np.random.normal(0, 1.0, (1000, 1))
 # y = np.sum(x, axis=0)
 # print(x[0, 9])
-x = np.zeros(100)
-occ, bin_edges = np.histogram(x, bins='auto')
+# x = np.zeros(100)
+# occ, bin_edges = np.histogram(x, bins='auto')
 # bin_values = np.digitize(x, bin_edges)
 # o = np.array(bin_values, dtype=int)
 # h = np.array(x, dtype=int)

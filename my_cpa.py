@@ -56,7 +56,8 @@ def cpa_attack(config_name):
             if i != params['idx_of_correct_key_guess']:
                 plt.plot(results[i, :], color='tab:gray')
         plt.plot(results[params['idx_of_correct_key_guess'], :], color='red')
-    plt.show()
+    # plt.show()
+    plt.savefig('./plots/cpa.png')
     # print(numerical_success_rate(distinguish_vector=results, correct_key=0, order=1).eval())
 
 
