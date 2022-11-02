@@ -155,91 +155,67 @@ class CMI_Engine_By_Histogram(GuessEngine):
         new_bin_edges = np.concatenate((np.array(left_pad[::-1]), bin_edges, np.array(right_pad)))
         return new_hist, new_bin_edges
 
-    def _reconstruct_px_histogram_dd(self, hist_dd):
-        hist_count_dd, hist_edges_dd = hist_dd[0], hist_dd[1]
-        for i in range(self._number_of_guesses):
-            hist_count = np.sum(hist_count_dd, axis=tuple([gi for gi in range(self._number_of_guesses) if gi != i]))
-            self.pdfs_for_px[i] = (hist_count, hist_edges_dd[i])
-
-    def _reconstruct_py_histogram_dd(self, hist_dd):
-        hist_count_dd, hist_edges_dd = hist_dd[0], hist_dd[1]
-        for i in range(self.number_of_time_samples):
-            hist_count = np.sum(hist_count_dd, axis=tuple([ti for ti in range(self.number_of_time_samples) if ti != i]))
-            self.pdfs_for_py[i] = (hist_count, hist_edges_dd[i])
-
-    def _reconstruct_pyx_histogram_dd(self, key_guess_idx, c_idx, secret_x_val, hist_dd):
-        hist_count_dd, hist_edges_dd = hist_dd[0], hist_dd[1]
-        for i in range(self.number_of_time_samples):
-            hist_count = np.sum(hist_count_dd, axis=tuple([ti for ti in range(self.number_of_time_samples) if ti != i]))
-            self.pdfs_for_pyx[key_guess_idx][i][c_idx][secret_x_val] = (hist_count, hist_edges_dd[i])
-
-    def _histogram_estimation_px(self, data):
+    def _histogram_estimation_px(self, data, key_guess_idx):
         if self._batch_count == 0:
             if self.num_bins > 0:
-                current_hist_x = np.histogramdd(data, bins=self.num_bins) if not self.hist_boundary else \
-                    np.histogramdd(data, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
+                current_hist_x = np.histogram(data, bins=self.num_bins) if not self.hist_boundary else \
+                    np.histogram(data, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
             else:
-                current_hist_x = np.histogramdd(data, bins='auto') if not self.hist_boundary else \
-                    np.histogramdd(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
-            self._reconstruct_px_histogram_dd(current_hist_x)
+                current_hist_x = np.histogram(data, bins='auto') if not self.hist_boundary else \
+                    np.histogram(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+            self.pdfs_for_px[key_guess_idx] = current_hist_x
         else:
-            for i in range(self._number_of_guesses):
-                previous_hist_x = self.pdfs_for_px[i]
-                cur_data = np.array(data[:, i], ndmin=2).T
-                if self.num_bins > 0:
-                    update_hist_x = self.update_hist(previous_hist_x, cur_data)
-                else:
-                    current_hist_x = np.histogram(cur_data, bins='auto')
-                    update_hist_x = self.merge_hist(previous_hist_x, current_hist_x)
-                self.pdfs_for_px[i] = update_hist_x
+            previous_hist_x = self.pdfs_for_px[key_guess_idx]
+            if self.num_bins > 0:
+                update_hist_x = self.update_hist(previous_hist_x, data)
+            else:
+                current_hist_x = np.histogram(data, bins='auto')
+                update_hist_x = self.merge_hist(previous_hist_x, current_hist_x)
+            self.pdfs_for_px[key_guess_idx] = update_hist_x
 
-    def _histogram_estimation_py(self, data):
+    def _histogram_estimation_py(self, data, time_sample_idx):
         if self._batch_count == 0:
             if self.num_bins > 0:
-                current_hist_y = np.histogramdd(data, bins=self.num_bins) if not self.hist_boundary else \
-                    np.histogramdd(data, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
+                current_hist_y = np.histogram(data, bins=self.num_bins) if not self.hist_boundary else \
+                    np.histogram(data, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
             else:
-                current_hist_y = np.histogramdd(data, bins='auto') if not self.hist_boundary else \
-                    np.histogramdd(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
-            self._reconstruct_py_histogram_dd(current_hist_y)
+                current_hist_y = np.histogram(data, bins='auto') if not self.hist_boundary else \
+                    np.histogram(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+            self.pdfs_for_py[time_sample_idx] = current_hist_y
         else:
-            for i in range(self.number_of_time_samples):
-                previous_hist_y = self.pdfs_for_py[i]
-                cur_data = np.array(data[:, i], ndmin=2).T
-                if self.num_bins > 0:
-                    update_hist_y = self.update_hist(previous_hist_y, cur_data)
-                else:
-                    current_hist_y = np.histogram(cur_data, bins='auto')
-                    update_hist_y = self.merge_hist(previous_hist_y, current_hist_y)
-                self.pdfs_for_py[i] = update_hist_y
+            previous_hist_y = self.pdfs_for_py[time_sample_idx]
+            if self.num_bins > 0:
+                update_hist_y = self.update_hist(previous_hist_y, data)
+            else:
+                current_hist_y = np.histogram(data, bins='auto')
+                update_hist_y = self.merge_hist(previous_hist_y, current_hist_y)
+            self.pdfs_for_py[time_sample_idx] = update_hist_y
 
-    def _histogram_estimation_p_yx(self, key_guess_idx, c_idx, data, secret_x_i, secret_x_i_set):
+    def _histogram_estimation_p_yx(self, key_guess_idx, c_idx, time_sample_idx, y, secret_x_i, secret_x_i_set):
         """
             1. estimate the histogram of p_yx for current batch
             2. store y_x for later processing
         """
         for secret_x_val in secret_x_i_set:
             secret_index = np.where(secret_x_i == secret_x_val)
-            y_x = data[secret_index, :]
+            y_x = y[secret_index]
 
             if self._batch_count == 0:
                 if self.num_bins > 0:
-                    current_hist_yx = np.histogramdd(y_x, bins=self.num_bins) if not self.hist_boundary else \
-                        np.histogramdd(y_x, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
+                    current_hist_yx = np.histogram(y_x, bins=self.num_bins) if not self.hist_boundary else \
+                        np.histogram(y_x, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
                 else:
-                    current_hist_yx = np.histogramdd(y_x, bins='auto') if not self.hist_boundary else \
-                        np.histogramdd(y_x, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
-                self._reconstruct_pyx_histogram_dd(key_guess_idx, c_idx, secret_x_val, current_hist_yx)
+                    current_hist_yx = np.histogram(y_x, bins='auto') if not self.hist_boundary else \
+                        np.histogram(y_x, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+                self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = current_hist_yx
             else:
-                for i in range(self.number_of_time_samples):
-                    previous_hist_yx = self.pdfs_for_pyx[key_guess_idx][c_idx][i][secret_x_val]
-                    cur_data = np.array(y_x[:, i], ndmin=2).T
-                    if self.num_bins > 0:
-                        update_hist_yx = self.update_hist(previous_hist_yx, cur_data)
-                    else:
-                        current_hist_y = np.histogram(cur_data, bins='auto')
-                        update_hist_yx = self.merge_hist(previous_hist_yx, current_hist_y)
-                    self.pdfs_for_pyx[key_guess_idx][c_idx][i][secret_x_val] = update_hist_yx
+                previous_hist_yx = self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
+                if self.num_bins > 0:
+                    update_hist_yx = self.update_hist(previous_hist_yx, y_x)
+                else:
+                    current_hist_y = np.histogram(y_x, bins='auto')
+                    update_hist_yx = self.merge_hist(previous_hist_yx, current_hist_y)
+                self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = update_hist_yx
 
     def _store_yx(self, key_guess_idx, c_idx, time_sample_idx, y, secret_x_i, secret_x_i_set):
         for secret_x_val in secret_x_i_set:
@@ -294,36 +270,38 @@ class CMI_Engine_By_Histogram(GuessEngine):
         # store the total secret x
         self.secret_x = secret_x if not isinstance(self.secret_x, np.ndarray) else np.concatenate(
             (self.secret_x, secret_x), axis=0)
-        # estimate the histogram of p_x for current batch
-        self._histogram_estimation_px(secret_x)
 
         # store the total y
         batch_leakages = batch.leakages
         self.y_total = batch_leakages if not isinstance(self.y_total, np.ndarray) else np.concatenate(
             (self.y_total, batch_leakages), axis=0)
-
         # estimate the histogram of p_y for current batch
-        y = batch_leakages
-        self._histogram_estimation_py(y)
+        for i in range(self.number_of_time_samples):
+            y = np.array(batch_leakages[:, i], ndmin=2).T
+            self._histogram_estimation_py(y, i)
 
-        print('[INFO] Processing PDFs Estimation...')
+        print('[INFO] Processing pdfs estimation...')
         for i in tqdm(range(self._number_of_guesses)):
             print('[INFO] Processing Key Guess #', i)
             secret_x_i = secret_x[:, i]
             secret_x_i_set = np.unique(secret_x_i)  # no repeated item
+
+            # estimate the histogram of p_x for current key guess
+            self._histogram_estimation_px(secret_x_i, i)
+
             for j in range(self.number_of_time_samples):
                 secret_x_i_copy = np.copy(secret_x_i)
+                y = np.array(batch_leakages[:, j], ndmin=2).T
 
-                # estimate the histogram of p_yx for current batch
-                self._histogram_estimation_p_yx(i, 0, y, secret_x_i, secret_x_i_set)
+                # estimate the histogram of p_y for current batch
+                self._histogram_estimation_p_yx(i, 0, j, y, secret_x_i, secret_x_i_set)
                 self._store_yx(i, 0, j, y, secret_x_i, secret_x_i_set)
 
                 # statistical test
                 for k in range(1, self.num_shuffles + 1):
                     np.random.shuffle(secret_x_i_copy)
                     self._histogram_estimation_p_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
-                    self._store_yx(i, k, j, y, secret_x_i, secret_x_i_set)
-        self._batch_count += 1
+                    self._store_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
 
     def _finalize(self):
         print('[INFO] processing cmi calculation...')
@@ -340,7 +318,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                 # statistical test
                 cmi_zero_leakages = np.zeros(self.num_shuffles)
                 for k in range(1, self.num_shuffles + 1):
-                    p_yx = self.pdfs_for_pyx[i][k][j]  # list
+                    p_yx = self.pdfs_for_pyx[i][k][j]
                     yx = self.y_x[i][k][j]  # list
                     cmi_shuffle = self._cal_mutual_information(p_x, p_y, p_yx, yx)
                     cmi_zero_leakages[k - 1] = cmi_shuffle
@@ -422,11 +400,11 @@ class CMI_Engine_By_KDE(GuessEngine):
         # p_x (binomial distribution) - known
         p_x = binom.pmf(secret_x, n=8, p=0.5)
         for i in tqdm(range(self._number_of_guesses)):
-            print('[INFO] Processing Key Guess #', i)
+            print('[INFO] Processing Key Guess', i)
             secret_x_i = secret_x[:, i]
             p_x_i = p_x[:, i]
             secret_x_i_set = np.unique(secret_x_i)  # no repeated item
-            for j in range(time_samples):
+            for j in tqdm(range(time_samples)):
                 secret_x_i_copy = np.copy(secret_x_i)
                 p_x_i_copy = np.copy(p_x_i)
                 lk_total = np.array(batch_leakages[:, j], ndmin=2).T

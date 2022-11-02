@@ -75,27 +75,27 @@ def cmi(mode,
                 plt.plot(mi[i, :], color='tab:gray')
         plt.plot(mi[idx_correct_key, :], color='red')
         # plt.show()
-        plt.savefig('./plots/mi_new.png')
+        plt.savefig('./plots/mi_n_30.png')
         plt.figure(1)
         plt.title(engine_name + '+pv')
         for i in range(pv.shape[0]):
             if i != idx_correct_key:
                 plt.plot(pv[i, :], color='tab:gray')
         plt.plot(pv[idx_correct_key, :], color='red')
-        # plt.show()
-        plt.savefig('./plots/pv_new.png')
+        plt.show()
+        plt.savefig('./plots/pv_n_30.png')
 
 
 if __name__ == '__main__':
     # mode = 'fix_random' or 'normal'
     cmi(mode='normal',
         config_name='normal_simulated_traces.yaml',
-        no_of_guesses=2,
+        no_of_guesses=256,
         idx_correct_key=0,  # the index of correct key guess
         engine_name='cmi',
         num_bins=calc_best_num_of_hist_bins(3, 1),
         # num_bins=0,
-        # hist_boundary=[0, calc_best_num_of_hist_bins(3, 1)],
-        hist_boundary=None,
+        hist_boundary=[0, calc_best_num_of_hist_bins(3, 1)],
+        # hist_boundary=None,
         num_shuffles=10,
-        batch_size=100)
+        batch_size=1000000)
