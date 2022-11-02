@@ -302,6 +302,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                     np.random.shuffle(secret_x_i_copy)
                     self._histogram_estimation_p_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
                     self._store_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
+        self._batch_count += 1
 
     def _finalize(self):
         print('[INFO] processing cmi calculation...')
