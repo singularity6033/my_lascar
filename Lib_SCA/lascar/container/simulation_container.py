@@ -167,8 +167,8 @@ class AesSimulationContainer(AbstractContainer):
 
 class SimulatedPowerTraceContainer(AbstractContainer):
 
-    def __init__(self, number_of_traces=None, config_file_name='normal_simulated_traces.yaml', seed=1337, **kwargs):
-        params = TraceConfig().get_config(config_file_name)
+    def __init__(self, number_of_traces=None, config_params=None, seed=1337, **kwargs):
+        params = config_params
         if number_of_traces:
             self.number_of_trace = number_of_traces
         else:
@@ -354,8 +354,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
 
 class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
-    def __init__(self, number_of_traces=None, config_file_name='fixed_random_traces.yaml', seed=1337, **kwargs):
-        params = TraceConfig().get_config(config_file_name)
+    def __init__(self, number_of_traces=None, config_params=None, seed=1337, **kwargs):
+        params = config_params
         if number_of_traces:
             self.number_of_trace = number_of_traces
         else:

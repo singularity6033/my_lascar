@@ -17,4 +17,4 @@ attack_range: range(0, 4)
 batch_size: 1000
 
 # plotting params
-figure_params : {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'}
+figure_params : {'title': 'dpa_result', 'x_label': 'time', 'y_label': 'dom'}
