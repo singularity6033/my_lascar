@@ -74,9 +74,9 @@ class Session:
         self.name = name
 
         self.engines = {}
-
-        self.add_engine(MeanEngine())
-        self.add_engine(VarEngine())
+        #
+        # self.add_engine(MeanEngine())
+        # self.add_engine(VarEngine())
 
         if engine is not None:
             self.add_engine(engine)
@@ -266,6 +266,7 @@ class Session:
                 self.logger.debug("Computing results (output step %d)." % offsets[1])
                 for engine in self.engines.values():
                     results = engine.finalize()
+                    engine.results = results
                     if isinstance(results, np.ndarray):
                         results = np.copy(results)
                     self.output_method.update(engine, results)

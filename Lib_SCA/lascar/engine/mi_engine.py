@@ -34,21 +34,20 @@ class CMI_Engine_By_Histogram(GuessEngine):
         """
         MiEngine
         :param name: name of the engine
-        :param selection_function: takes a value and a guess_guess as input,
-               returns a modelisation of the leakage for this (value/guess).
+        :param selection_function: takes a value and a guess_guess as input, returns a modelisation of the leakage for this (value/guess).
         :param num_bins: number of bins used in initialization of histogram estimation
-                         if == 0, it will be in an 'auto' mode, it will calculate current hist based on
+                         1. if == 0, it will be in an 'auto' mode, it will calculate current hist based on
                          the current data and merge previous hist and current hist directly based on
                          https://stackoverflow.com/questions/47085662/merge-histograms-with-different-ranges
-                         if > 0, it will update previous hist with current raw data with fixed bin sizes
-        :param hist_boundary: pre-defined hist boundary, if = None, the boundary will be decided just by data of the
-                              first batch
+                         2. if > 0, it will update previous hist with current raw data with fixed bin sizes
+        :param hist_boundary: pre-defined hist boundary, if == None, the boundary is based on data of the first batch
         :param guess_range: what are the values for the guess guess
         :param num_shuffles: testing times used to obtain the reasonable statistical value
         """
         self.num_bins = num_bins
         self.hist_boundary = hist_boundary
         self.num_shuffles = num_shuffles
+        self.results = None
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
 
     def _initialize(self):
@@ -200,7 +199,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
             secret_index = np.where(secret_x_i == secret_x_val)
             y_x = y[secret_index]
 
-            if self._batch_count == 0:
+            if not self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]:
                 if self.num_bins > 0:
                     current_hist_yx = np.histogram(y_x, bins=self.num_bins) if not self.hist_boundary else \
                         np.histogram(y_x, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
@@ -302,6 +301,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                     np.random.shuffle(secret_x_i_copy)
                     self._histogram_estimation_p_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
                     self._store_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
+        self._batch_count += 1
 
     def _finalize(self):
         print('[INFO] processing cmi calculation...')
