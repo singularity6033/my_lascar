@@ -1,9 +1,11 @@
 from math import inf
 
 import numpy as np
-import sklearn.feature_selection
+import sklearn.feature_selection as fs
 from scipy import integrate
-from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete
+from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete, bernoulli
+from sklearn.cluster import KMeans
+
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
 from pyitlib import discrete_random_variable as drv
@@ -20,9 +22,49 @@ import matplotlib.pyplot as plt
 # container.plot_traces(list(range(1, container.number_of_traces, 2)))
 # print(container[25].value['trace_idx'])
 # snr_theo = container.calc_snr('theo')
+# a = [i for i in range(0)]
+# a = np.arange(10)
+# b = a[6:(3-1)*2+6+1:2]
+# a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+# c = np.ones((5, 1))
+# x = np.array([[0, 0, 0],
+#             [1, 1, 0],
+#             [2, 0, 1],
+#             [2, 0, 1],
+#             [2, 0, 1]])
+# y = np.array([0, 1, 2, 2, 1])
+# xx = fs.mutual_info_classif(c, x[:, 2])
 
+x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
+y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
+
+# b = np.array([[1, 5, 9], [2, 4, 6]])
+# a = np.random.randint(0, 5, (2, 2, 2))
+# b = np.random.randint(0, 5, (5, 5))
+# print(b[1:2, 4])
+# print(np.mean(a, axis=0))
+# print(np.var(a, axis=0))
+# b = a.flatten()
+# u, s, et = np.linalg.svd(a)
+# b = np.array(et[:2], ndmin=2)
+
+# b = np.random.rand(3, 3)
+# b[0][0] = 1
+# b[1][1] = 1
+# b[0][2] = 1
+# b[2][2] = 1
+# r = bernoulli.rvs(b, size=(3, 3))
+# c = np.arange(1, 100, 0.5)
+# print(np.diag_indices_from(a))
+# print(a)
+# a[a > 5] = -1
+# print(a)
+# b = np.max(a)
+# b = np.ones((3, 2))
+# print(a ** 2)
+# print(np.linalg.norm(a, axis=(0, 1)))
 # snr_real = container.calc_snr('real')
-#
+
 # plt.figure(1)
 # plt.title('snr')
 # plt.plot(snr_theo)
@@ -36,13 +78,13 @@ import matplotlib.pyplot as plt
 #        for _ in range(10)]
 #       for __ in range(10)]
 #      for ___ in range(10)]
-x = np.random.normal(0, 1.0, (1000, 3))
-c = np.random.randn(10, 18)
-y = x.tolist()
-# yy = [np.array(x[:, i]) for i in range(256)]
-x = [[1] * 1000 for _ in range(1000)]
-cov = np.array([[1, 2, 2, 3, 5], [1, 1, 1, 2, 5], [1, 2, 1, 4, 5], [1, 4, 4, 2, 5]])
-s = cov.tolist()
+# x = np.random.normal(0, 1.0, (1000, 3))
+# c = np.random.randn(10, 18)
+# y = x.tolist()
+# # yy = [np.array(x[:, i]) for i in range(256)]
+# x = [[1] * 1000 for _ in range(1000)]
+# cov = np.array([[1, 2, 2, 3, 5], [1, 1, 1, 2, 5], [1, 2, 1, 4, 5], [1, 4, 4, 2, 5]])
+# s = cov.tolist()
 # x = np.array([1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 2.1, 2.56, 2.5, 5], ndmin=2).T
 # print(isinstance(x, np.ndarray))
 # print(np.unique(x))data
@@ -53,7 +95,7 @@ from collections import Counter
 # y = np.zeros((1000000, 10000))
 # y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T
 # # a = Counter(x.flatten())
-hist = np.histogramdd(c, bins=2)
+# hist = np.histogramdd(c, bins=2)
 # hist_count = hist[0]
 #
 # # pdff = rv_histogram(hist)

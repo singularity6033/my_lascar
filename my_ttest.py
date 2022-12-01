@@ -8,35 +8,33 @@ Its constructor needs a partition function, which will separate leakages into tw
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.stats import ttest_ind
-
-from Lib_SCA.config_extractor import TraceConfig
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer, \
-    Single_Result_OutputMethod
+from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
+from Lib_SCA.configs.evaluation_configs import t_test_config
+from Lib_SCA.configs.simulation_configs import fixed_random_traces
+from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import Single_Result_OutputMethod
 from Lib_SCA.lascar import Session, TTestEngine
-from real_traces_generator import real_trace_generator
+# from real_traces_generator import real_trace_generator
 
 
-def t_test(config_name):
-    ttest_params = TraceConfig().get_config(config_name)
-    if ttest_params['mode'] == 'fix_random':
-        container_params = TraceConfig().get_config('fixed_random_traces.yaml')
-        container = SimulatedPowerTraceFixedRandomContainer(config_params=container_params)
-    elif ttest_params['mode'] == 'real':
-        pass
+def tt_test(params, trace_params):
+    container = None
+    if params['mode'] == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace
         # fix and random sets have already been partitioned in container
         return int(value["trace_idx"] % 2 == 0)
 
-    ttest_engine = TTestEngine(ttest_params['engine_name'], partition_function)
+    ttest_engine = TTestEngine(params['engine_name'], partition_function)
 
     # We choose here to plot the resulting curve
     session = Session(container,
                       engine=ttest_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=ttest_params['figure_params'],
-                                                               output_path='./plots/ttest.png'))
-    session.run(batch_size=ttest_params['batch_size'])
+                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
+                                                               output_path=''))
+    session.run(batch_size=params['batch_size'])
 
     # comparison with Scipy built-in function
     # results = ttest_engine.finalize()
@@ -51,4 +49,4 @@ def t_test(config_name):
 
 
 if __name__ == '__main__':
-    t_test(config_name='t_test.yaml')
+    tt_test(t_test_config, fixed_random_traces)

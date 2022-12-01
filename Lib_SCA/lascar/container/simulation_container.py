@@ -26,7 +26,6 @@ from tqdm import tqdm
 
 from Lib_SCA.lascar.tools.aes import sbox, Aes
 from Lib_SCA.lascar.tools.leakage_model import HammingPrecomputedModel
-from Lib_SCA.config_extractor import TraceConfig
 from .container import AbstractContainer, Trace
 
 DEFAULT_KEY = [i for i in range(16)]
@@ -195,7 +194,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.seed = seed
         self.leakage_model_name = params['leakage_model_name']
         self.masking = params['masking']
-        self.number_of_masking_bytes = params['num_of_masking_bytes']
+        self.number_of_masking_bytes = params['number_of_masking_bytes']
         self.shuffle = params['shuffle']
         self.shift = params['shift']
 
@@ -237,13 +236,13 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         if self.attack_sample_point + 2 < self.number_of_time_samples:
             value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
             cipher = value["plaintext"] ^ value["key"]
-            if self.masking:
+            if self.masking and self.number_of_masking_bytes > 0:
                 value["mask"] = np.random.randint(0, 256,
                                                   (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
                 r_bytes = np.zeros((self.number_of_bytes, 1))
             for i in range(self.number_of_bytes):
                 sbox_output = sbox[cipher[i]]
-                if self.masking:
+                if self.masking and self.number_of_masking_bytes > 0:
                     for j in range(self.number_of_masking_bytes):
                         sbox_output ^= value["mask"][i][j]
                         r_bytes[i] += self.leakage_model(value["mask"][i][j])
@@ -251,13 +250,13 @@ class SimulatedPowerTraceContainer(AbstractContainer):
                 cipher[i] = self.leakage_model(sbox_output)
             # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
-            if self.masking:
+            if self.masking and self.number_of_masking_bytes > 0:
                 r_bytes = r_bytes.repeat(self.no_time_samples, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        if self.masking:
+        if self.masking and self.number_of_masking_bytes > 0:
             value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise
@@ -381,7 +380,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.seed = seed
         self.leakage_model_name = params['leakage_model_name']
         self.masking = params['masking']
-        self.number_of_masking_bytes = params['num_of_masking_bytes']
+        self.number_of_masking_bytes = params['number_of_masking_bytes']
         self.shuffle = params['shuffle']
         self.shift = params['shift']
 
@@ -429,29 +428,34 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 return
             else:
                 value["plaintext"] = np.array(self.fixed_set, ndmin=2).T
+                tmp = value["plaintext"] ^ value["key"]
+                for i in range(self.number_of_bytes):
+                    sbox_output = sbox[tmp[i]]
+                    tmp[i] = self.leakage_model(sbox_output)
+                value["leakage_model_output"] = tmp.repeat(self.number_of_time_samples, axis=1)
 
         if self.attack_sample_point + 2 < self.number_of_time_samples:
-            value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
+            # value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)
             cipher = value["plaintext"] ^ value["key"]
-            if self.masking:
+            if self.masking and self.number_of_masking_bytes > 0:
                 value["mask"] = np.random.randint(0, 256,
                                                   (self.number_of_bytes, self.number_of_masking_bytes, 1), np.uint8)
                 r_bytes = np.zeros((self.number_of_bytes, 1))
             for i in range(self.number_of_bytes):
                 sbox_output = sbox[cipher[i]]
-                if self.masking:
+                if self.masking and self.number_of_masking_bytes > 0:
                     for j in range(self.number_of_masking_bytes):
                         sbox_output ^= value["mask"][i][j]
+                        r_bytes[i] += self.leakage_model(value["mask"][i][j])
                 cipher[i] = self.leakage_model(sbox_output)
-                if self.masking:
-                    r_bytes[i] += self.leakage_model(value["mask"][i][j])
+
             # # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
         value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-        if self.masking:
+        if self.masking and self.number_of_masking_bytes > 0:
             value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
         # generate electronic noise

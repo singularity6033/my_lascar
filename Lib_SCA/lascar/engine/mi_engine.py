@@ -42,7 +42,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                          2. if > 0, it will update previous hist with current raw data with fixed bin sizes
         :param hist_boundary: pre-defined hist boundary, if == None, the boundary is based on data of the first batch
         :param guess_range: what are the values for the guess guess
-        :param num_shuffles: testing times used to obtain the reasonable statistical value
+        :param num_shuffles: random shuffle times used to obtain the reasonable statistical test value
         """
         self.num_bins = num_bins
         self.hist_boundary = hist_boundary
@@ -329,11 +329,21 @@ class CMI_Engine_By_Histogram(GuessEngine):
                 p_value = 2 * norm.cdf(real_cmi, loc=m, scale=v) if real_cmi < m else 2 * (
                         1 - norm.cdf(real_cmi, loc=m, scale=v))
                 self._p_value[i][j] = p_value
+        self._clean()
         return self._mutual_information, self._p_value
 
     def _clean(self):
-        del self._mutual_information
-        del self._p_value
+        import gc
+        del self.secret_x
+        del self.y_total
+        # del self._mutual_information
+        # del self._p_value
+        del self.number_of_time_samples
+        del self.pdfs_for_pyx
+        del self.y_x
+        del self.pdfs_for_px
+        del self.pdfs_for_py
+        gc.collect()
         self.size_in_memory = 0
 
 

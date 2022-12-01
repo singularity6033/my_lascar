@@ -46,11 +46,12 @@ class Single_Result_OutputMethod(OutputMethod):
                     if i != engine.solution:
                         plt.plot(results[i, :], color='tab:gray')
                 plt.plot(results[engine.solution, :], color='red')
-
-            if self.output_path:
-                plt.savefig(self.output_path)
-            if self.display:
-                plt.show()
+        else:
+            with open('data.txt', 'a') as f:
+                f.write(self.output_path + ' ')
+                f.write(results)
+                f.write('\n')
+                return
 
         if self.output_path:
             plt.savefig(self.output_path)
@@ -89,17 +90,16 @@ class Multiple_Results_OutputMethod(OutputMethod):
         self.display = display
 
     def _update(self, engine, results):
-
         if isinstance(results, tuple) and len(results) == 2:
-            fig, axs = plt.subplot(1, 2, figsize=(16, 6))
+            fig, axs = plt.subplots(1, 2, figsize=(16, 6))
             for i in range(2):
                 axs[i].set_title(self.figure_params['title'][i])
                 axs[i].set_xlabel(self.figure_params['x_label'][i])
                 axs[i].set_ylabel(self.figure_params['y_label'][i])
                 for j in range(results[i].shape[0]):
                     if j != engine.solution:
-                        axs[i].plot(results[i, :], color='tab:gray')
-                axs[i].plot(results[engine.solution, :], color='red')
+                        axs[i].plot(results[i][j, :], color='tab:gray')
+                axs[i].plot(results[i][engine.solution, :], color='red')
 
         if self.output_path:
             fig.savefig(self.output_path)

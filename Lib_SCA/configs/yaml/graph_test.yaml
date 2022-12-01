@@ -1,0 +1,11 @@
+# the type of the container (normal trace or fixed-random trace or real trace)
+mode: 'fix_random'
+
+# engine name (trivial)
+engine_name: 'graph_test'
+
+# batch size
+batch_size: 1000
+
+# plotting params
+figure_params : {'title': 'ttest_result', 'x_label': 'time', 'y_label': 't_score'}

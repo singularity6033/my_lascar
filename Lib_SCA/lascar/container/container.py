@@ -530,6 +530,8 @@ class AbstractContainer(Container):
 
 class TraceBatchContainer(Container):
     def __init__(self, *args, **kwargs):
+        self.idx_exp = 0
+        self.attack_sample_point = 0
 
         if len(args) == 2:
             self.leakages = args[0] if not kwargs.get("copy", 0) else np.copy(args[0])
