@@ -40,8 +40,10 @@ from .classifier_engine import save_classifier
 from .classifier_engine import load_classifier
 
 from .dom_engine import DomEngine
-from .mi_engine import CMI_Engine
+from .mi_engine import CMI_Engine_By_Histogram
+from .mi_engine import CMI_Engine_By_KDE
 from .success_rate_engine import numerical_success_rate
+from .graph_engine import Phase_Space_Reconstruction_Graph, Generalised_RDPG, GraphTestEngine, GraphMIEngine
 
 # from .template_engine import TemplateProfileEngine
 # from .template_engine import TemplateMatchEngine

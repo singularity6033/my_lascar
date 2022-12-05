@@ -1,15 +1,17 @@
 from typing import Dict
 import yaml
+import json
 import os.path
+import jsonlines
 from collections import namedtuple
 
 # use a namedtuple to make the cache entries a little more clear
 CacheEntry = namedtuple('CacheEntry', ['entry', 'mtime'])
 
 
-class TraceConfig:
+class YAMLConfig:
     """
-    this class manages configurations for all input files (.yaml)
+    this class manages configurations for input files (.yaml)
 
     the structure of the config YAML files is complex. for a reference of all the required fields, just look at
     demo.yaml in configs.
@@ -19,11 +21,11 @@ class TraceConfig:
     the modified time is used so that if a config is changed while the program is running, the cache is cleared and
     the new version of the config is retrieved.
     """
-    CONFIG_PATH = 'Lib_SCA/configs/'
+    CONFIG_PATH = 'Lib_SCA/configs/yaml'
     config_cache: Dict[str, CacheEntry] = {}
 
     def get_config(self, config_name):
-        path = self.CONFIG_PATH + config_name
+        path = self.CONFIG_PATH + config_name + '.yaml'
         # print(path)
         try:
             mtime = os.path.getmtime(path)
@@ -35,3 +37,47 @@ class TraceConfig:
                 entry = yaml.safe_load(infile)
             self.config_cache[config_name] = CacheEntry(entry=entry, mtime=mtime)
         return self.config_cache[config_name].entry
+
+
+class JSONConfig:
+    """
+    this class manages configurations for input files (.json)
+
+    .json file may contain multiple objects of config parameters, usually used in the scanning program
+    write and read multiple records sequentially
+    """
+    CONFIG_PATH = 'Lib_SCA/configs/json/'
+    config_cache: Dict[str, CacheEntry] = {}
+
+    def __init__(self, config_name):
+        self.config_name = config_name
+
+    def get_config(self):
+        """
+        output a list of dicts
+        """
+        path = self.CONFIG_PATH + self.config_name + '.json'
+        json_list = list()
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError as e:
+            raise ValueError(f'config "{self.config_name}" not found"') from e
+
+        if self.config_name not in self.config_cache or self.config_cache[self.config_name].mtime < mtime:
+            with open(path) as infile:
+                for item in jsonlines.Reader(infile):
+                    json_list.append(item)
+                entry = json_list
+            self.config_cache[self.config_name] = CacheEntry(entry=entry, mtime=mtime)
+        return self.config_cache[self.config_name].entry
+
+    def generate_config(self, dictionary):
+        """
+        input a list of dicts
+        """
+        path = self.CONFIG_PATH + self.config_name + '.json'
+        # if not os.path.exists(path):
+        #     os.makedirs(path)
+        with open(path, 'a') as f:
+            json.dump(dictionary, f)
+            f.write("\n")

@@ -1,8 +1,8 @@
 # total number of traces
-number_of_traces: 5000
+number_of_traces: 10000
 
 # total number of bytes one trace has
-number_of_bytes: 5
+number_of_bytes: 16
 
 # total number of time sample points one trace has
 number_of_time_samples: 10
@@ -17,8 +17,8 @@ linear_coefficient_switch: 1
 # index of bytes represented for exploitable signal and switching noise
 # int or list (0-number_of_bytes)
 # all indexes should be exclusive and total number of them should equal to "number_of_bytes"
-idx_exploitable_bytes: [3]
-idx_switching_noise_bytes: [1,2,0,4]
+idx_exploitable_bytes: [0]
+idx_switching_noise_bytes: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 # parameters of electronic noise (a Multi-Gaussian distribution)
 # mean is a 1-d list with the shape: number_of_time_samples * 1
@@ -30,9 +30,9 @@ idx_switching_noise_bytes: [1,2,0,4]
 #                  0, 0, 1]]
 # note: this is a simple covariance matrix only with variances along diagonal
 # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
-# automatically in the code
+# automatically i1 the code
 noise_mean_el: 0
-noise_sigma_el: 5
+noise_sigma_el: 0.5
 
 # constant term used in calculation of trace power
 constant: 0
@@ -51,8 +51,8 @@ bytes_curve: false
 leakage_model_name: "default"
 
 # masking countermeasure
-masking: false
-num_of_masking_bytes: 3
+masking: true
+num_of_masking_bytes: 1
 
 # shuffle and shift
 shuffle: false

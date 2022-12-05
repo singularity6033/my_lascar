@@ -86,6 +86,7 @@ class CpaEngine(GuessEngine):
         mask = v == 0.0
         numerator[:, mask] = 0.0
         denominator[:, mask] = 1.0
+        self._clean()
         return np.nan_to_num(numerator / denominator)
 
     def _clean(self):

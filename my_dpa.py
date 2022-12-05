@@ -1,17 +1,30 @@
-# First the Container:
+from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
+from Lib_SCA.configs.attack_configs import dpa_config
+from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import Single_Result_OutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
 from Lib_SCA.lascar import Session
 import matplotlib.pyplot as plt
 
+from real_traces_generator import real_trace_generator
 
-def dpa_attack(mode, config_name, no_of_guesses=256, idx_correct_key=-1, engine_name='dpa', batch_size=2500):
-    if mode == 'normal':
-        container = SimulatedPowerTraceContainer(config_name)
-    elif mode == 'fix_random':
-        container = SimulatedPowerTraceFixedRandomContainer(config_name)
-    container = SimulatedPowerTraceContainer(config_name)
+
+def dpa_attack(params, trace_params):
+    container = None
+    if params['mode'] == 'normal':
+        container = SimulatedPowerTraceContainer(config_params=trace_params)
+    elif params['mode'] == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+    elif params['mode'] == 'real':
+        container = real_trace_generator()
+
+    attack_byte = container.idx_exp[0]
+    attack_time = container.attack_sample_point
+
+    # selection attack regions along time axis
+    # container.leakage_section = params['attack_range']
     """
     Then we build the DpaEngine.
     
@@ -21,49 +34,24 @@ def dpa_attack(mode, config_name, no_of_guesses=256, idx_correct_key=-1, engine_
     - a guess_range: what are the guesses you want to test?
     """
 
-    a_byte = int(input('pls choose one byte from ' + str(container.idx_exp) + ': '))
-
-    def selection_function(value, guess, attack_byte=a_byte, attack_time=container.attack_sample_point):
+    def selection_function(value, guess, ab=attack_byte, at=attack_time):
         # LSB
-        return sbox[value["plaintext"][attack_byte][attack_time] ^ guess] & 1
+        return sbox[value["plaintext"][ab][at] ^ guess] & 1
 
-    guess_range = range(no_of_guesses)
-    dpa_engine = DpaEngine(engine_name, selection_function, guess_range)
+    guess_range = range(params['no_of_key_guesses'])
 
-    # We can now create a Session, register the dpa_lsb_engine, and run it.
+    dpa_engine = DpaEngine(params['engine_name'],
+                           selection_function,
+                           guess_range,
+                           solution=params['idx_of_correct_key_guess'])
 
-    session = Session(container, engine=dpa_engine)
-    # session.add_engine( dpa_lsb_engine) # the engine can be added after the session creation
+    session = Session(container,
+                      engine=dpa_engine,
+                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
+                                                               output_path='./plots/dpa.png'))
 
-    session.run(batch_size=batch_size)  # the session will load traces by batches of 100 traces
-
-    """
-    Now, to get the result, one solution could be to request the dpa_lsb_engine.finalize() method.
-    (As most of the engines, the finalize() method returns sca results)
-    
-    For more option about how to manage results of sca, please follow the next step of the tutorial.
-    
-    """
-    results = dpa_engine.finalize()
-
-    # plotting
-    plt.figure(0)
-    plt.title(engine_name)
-    plt.xlabel('time')
-    if idx_correct_key == -1:
-        plt.plot(results.T)
-    else:
-        for i in range(results.shape[0]):
-            if i != idx_correct_key:
-                plt.plot(results[i, :], color='tab:gray')
-        plt.plot(results[idx_correct_key, :], color='red')
-    plt.show()
+    session.run(batch_size=params['batch_size'])
 
 
 if __name__ == '__main__':
-    dpa_attack(mode='normal',
-               config_name='normal_simulated_traces.yaml',
-               no_of_guesses=256,
-               idx_correct_key=0,  # the index of correct key guess
-               engine_name='dpa',
-               batch_size=2500)
+    dpa_attack(dpa_config, normal_simulated_traces)

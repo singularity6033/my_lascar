@@ -1,5 +1,5 @@
 # the type of the container (normal trace or fixed-random trace or real trace)
-mode: 'real'
+mode: 'normal'
 
 # the total number of key guesses used in the cpa attack
 # the index of the correct key guess
@@ -14,4 +14,7 @@ engine_name: 'cpa'
 attack_range: range(0, 4)
 
 # batch size
-batch_size: 2500
+batch_size: 1000
+
+# plotting params
+figure_params : {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'}

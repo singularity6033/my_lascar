@@ -268,7 +268,8 @@ class Session:
                     results = engine.finalize()
                     if isinstance(results, np.ndarray):
                         results = np.copy(results)
-                    self.output_method.update(engine, results)
+                    if engine.name not in ['mean', 'var']:
+                        self.output_method.update(engine, results)
 
             if self._progressbar:
                 self_progressbar.update(offsets[1])
