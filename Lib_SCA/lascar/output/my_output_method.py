@@ -1,6 +1,9 @@
+import os
 from math import ceil
 
 import matplotlib.pyplot as plt
+import pandas as pd
+
 from . import OutputMethod
 
 import numpy as np
@@ -16,25 +19,41 @@ class Single_Result_OutputMethod(OutputMethod):
             *engines,
             figure_params=None,
             output_path=None,
+            filename=None,
+            contain_raw_file=True,
             display=True,
+            along_time=True,
+            along_trace=True,
     ):
         """
         :param figure_params: basic params to plot figures (dictionary)
         ex: {'title': 'cmi', 'x_label': 'time', 'y_label': 'mi'}
         :param engines: engines to be tracked
-        :param output_path: it set, save the figure to output_path
+        :param output_path: it set, whether to save results (figure is saved as default)
+        :param contain_raw_file: if true, save results in a .xlsx file
         :param display: it set, display or show the figure
         """
         OutputMethod.__init__(self, *engines)
         self.figure_params = figure_params
         self.output_path = output_path
+        self.filename = filename
+        self.contain_raw_file = contain_raw_file
         self.display = display
+
+        self.total_results = None
+        self.batch_results = []
 
     def _update(self, engine, results):
         plt.title(self.figure_params['title'])
         plt.xlabel(self.figure_params['x_label'])
         plt.ylabel(self.figure_params['y_label'])
 
+        if isinstance(results, np.ndarray) and len(results.shape) == 1:
+            self.batch_results.append(np.max(results))
+        elif isinstance(results, np.ndarray) and len(results.shape) == 2:
+            self.batch_results.append(np.max(results, axis=1))
+
+    def _finalize(self):
         if isinstance(results, np.ndarray) and len(results.shape) == 1:
             plt.plot(results)
         elif isinstance(results, np.ndarray) and len(results.shape) == 2:
@@ -46,20 +65,23 @@ class Single_Result_OutputMethod(OutputMethod):
                     if i != engine.solution:
                         plt.plot(results[i, :], color='tab:gray')
                 plt.plot(results[engine.solution, :], color='red')
-        else:
-            with open('data.txt', 'a') as f:
-                f.write(self.output_path + ' ')
-                f.write(results)
-                f.write('\n')
-                return
 
         if self.output_path:
-            plt.savefig(self.output_path)
+            plot_path = os.sep.join([self.output_path, 'plots'])
+            if not os.path.exists(plot_path):
+                os.makedirs(plot_path)
+            plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
+            if self.contain_raw_file:
+                raw_file_path = os.sep.join([self.output_path, 'raw_data'])
+                if not os.path.exists(raw_file_path):
+                    os.makedirs(raw_file_path)
+                raw_data = pd.DataFrame(results)
+                writer = pd.ExcelWriter(os.sep.join([raw_file_path, 'data.xlsx']))
+                raw_data.to_excel(writer, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                writer.close()
+
         if self.display:
             plt.show()
-
-    def _finalize(self):
-        pass
 
     def from_output_method(self, output_method):
         pass
@@ -110,4 +132,42 @@ class Multiple_Results_OutputMethod(OutputMethod):
         pass
 
     def from_output_method(self, output_method):
+        pass
+
+
+class Incremental_Batch_OutputMethod(OutputMethod):
+    """
+        self defined output method designed for single output method
+        """
+
+    def __init__(
+            self,
+            *engines,
+            figure_params=None,
+            output_path=None,
+            filename=None,
+            contain_raw_file=True,
+            display=True,
+    ):
+        """
+        :param figure_params: basic params to plot figures (dictionary)
+        ex: {'title': 'cmi', 'x_label': 'time', 'y_label': 'mi'}
+        :param engines: engines to be tracked
+        :param output_path: it set, whether to save results (figure is saved as default)
+        :param contain_raw_file: if true, save results in a .xlsx file
+        :param display: it set, display or show the figure
+        """
+        OutputMethod.__init__(self, *engines)
+        self.figure_params = figure_params
+        self.output_path = output_path
+        self.filename = filename
+        self.contain_raw_file = contain_raw_file
+        self.display = display
+
+        self.stored_results = None
+
+    def _update(self, engine, results):
+        print(results)
+
+    def _finalize(self):
         pass

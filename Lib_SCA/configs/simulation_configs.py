@@ -57,9 +57,13 @@ normal_simulated_traces = {
     'masking': True,
     'number_of_masking_bytes': 1,
 
-    # shuffle and shift
+    # shuffle
     'shuffle': False,
+    'shuffle_range': [0, 5],
+
+    # shift
     'shift': False,
+    'shift_range': 5
 }
 
 """
@@ -67,7 +71,7 @@ configs for fixed_random_traces
 """
 fixed_random_traces = {
     # total number of traces
-    'number_of_traces': 5000,
+    'number_of_traces': 50000,
     # total number of bytes one trace has
     'number_of_bytes': 1,
 
@@ -102,7 +106,7 @@ fixed_random_traces = {
     # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
     # automatically i1 the code
     'noise_mean_el': 0,
-    'noise_sigma_el': 0,
+    'noise_sigma_el': 0.5,
 
     # constant term used in calculation of trace power
     'constant': 0,
@@ -122,10 +126,14 @@ fixed_random_traces = {
 
     # masking countermeasure
     'masking': True,
-    'number_of_masking_bytes': 0,
+    'number_of_masking_bytes': 10,
 
-    # shuffle and shift
+    # shuffle
     'shuffle': False,
+    'shuffle_range': [0, 5],
+
+    # shift
     'shift': False,
+    'shift_range': 5
 }
 

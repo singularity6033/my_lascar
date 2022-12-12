@@ -13,7 +13,7 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-
+from threading import active_count
 from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import cmi_config
 from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
@@ -21,6 +21,7 @@ from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixe
 from Lib_SCA.lascar import Multiple_Results_OutputMethod
 from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
+import tracemalloc
 import ruamel.yaml
 
 
@@ -69,32 +70,38 @@ def continuous_mutual_information(params, trace_params):
                                                                   display=False))
     session.run(batch_size=params['batch_size'])
 
+    del container
+    del mi_engine
+    del session
+    print(active_count())
+
 
 if __name__ == '__main__':
     cmi_params = cmi_config
     trace_info = normal_simulated_traces
     # json config file generation
-    json_config = JSONConfig('cmi_test')
+    json_config = JSONConfig('cmi_test_1')
+    tracemalloc.start()
     # 10k, 50k, 200k, 500k, 1000k
-    for m_number_of_traces in [50000, 500000, 10000000]:
-        for m_number_of_bytes in range(1, 17):
-            for m_noise_sigma_el in [0, 0.25, 0.5]:
-                for m_num_of_masking_bytes in [0, 1, 2]:
-                    m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
-                    trace_info['number_of_traces'] = m_number_of_traces
-                    trace_info['number_of_bytes'] = m_number_of_bytes
-                    trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
-                    trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
-                    trace_info['noise_sigma_el'] = m_noise_sigma_el
-                    trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
-                                        '_el_' + str(trace_info['noise_sigma_el']) + \
-                                        '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
-                                        '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                    json_config.generate_config(trace_info)
+    # for m_number_of_traces in [500000, 10000000]:
+    #     for m_number_of_bytes in range(1, 17):
+    #         for m_noise_sigma_el in [0, 0.25, 0.5]:
+    #             for m_num_of_masking_bytes in [0, 1, 2]:
+    #                 m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
+    #                 trace_info['number_of_traces'] = m_number_of_traces
+    #                 trace_info['number_of_bytes'] = m_number_of_bytes
+    #                 trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
+    #                 trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
+    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                 trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
+    #                                     '_el_' + str(trace_info['noise_sigma_el']) + \
+    #                                     '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
+    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                 json_config.generate_config(trace_info)
 
     # get json config file
     dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list)):
+    for i, dict_i in tqdm(enumerate(dict_list[1:])):
         print('[INFO] Processing #', i)
         continuous_mutual_information(cmi_params, dict_i)
 

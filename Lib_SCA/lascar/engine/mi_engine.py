@@ -1,3 +1,4 @@
+import tracemalloc
 from bisect import bisect_left
 from collections import Counter
 
@@ -7,6 +8,7 @@ from scipy import integrate
 from sklearn.neighbors import KernelDensity
 from scipy.stats import binom, rv_histogram, norm
 from tqdm import tqdm
+from sys import getsizeof
 
 from . import GuessEngine
 
@@ -51,8 +53,8 @@ class CMI_Engine_By_Histogram(GuessEngine):
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
 
     def _initialize(self):
-        self.secret_x = None
-        self.y_total = None
+        # self.secret_x = None
+        # self.y_total = None
 
         self._mutual_information = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
         self._p_value = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
@@ -265,15 +267,25 @@ class CMI_Engine_By_Histogram(GuessEngine):
         3. we assume the distribution of input secret x (hamming) is known as a binomial distribution with n=8, p=0.5
         """
         print('[INFO] Batch #', self._batch_count + 1)
+        print(tracemalloc.get_traced_memory())
+        snapshot = tracemalloc.take_snapshot()
+        for stat in snapshot.statistics('lineno')[:10]:
+            print(stat)
+        # print(getsizeof(self._mutual_information))
+        # print(getsizeof(self._p_value))
+        # print(getsizeof(self.pdfs_for_pyx))
+        # print(getsizeof(self.y_x))
+        # print(getsizeof(self.pdfs_for_px))
+        # print(getsizeof(self.pdfs_for_py))
         secret_x = self._mapfunction(self._guess_range, batch.values)  # batch_size * guess_range
         # store the total secret x
-        self.secret_x = secret_x if not isinstance(self.secret_x, np.ndarray) else np.concatenate(
-            (self.secret_x, secret_x), axis=0)
+        # self.secret_x = secret_x if not isinstance(self.secret_x, np.ndarray) else np.concatenate(
+        #     (self.secret_x, secret_x), axis=0)
 
         # store the total y
         batch_leakages = batch.leakages
-        self.y_total = batch_leakages if not isinstance(self.y_total, np.ndarray) else np.concatenate(
-            (self.y_total, batch_leakages), axis=0)
+        # self.y_total = batch_leakages if not isinstance(self.y_total, np.ndarray) else np.concatenate(
+        #     (self.y_total, batch_leakages), axis=0)
         # estimate the histogram of p_y for current batch
         for i in range(self.number_of_time_samples):
             y = np.array(batch_leakages[:, i], ndmin=2).T
@@ -329,15 +341,14 @@ class CMI_Engine_By_Histogram(GuessEngine):
                 p_value = 2 * norm.cdf(real_cmi, loc=m, scale=v) if real_cmi < m else 2 * (
                         1 - norm.cdf(real_cmi, loc=m, scale=v))
                 self._p_value[i][j] = p_value
+        results = (self._mutual_information, self._p_value)
         self._clean()
-        return self._mutual_information, self._p_value
+        return results
 
     def _clean(self):
         import gc
-        del self.secret_x
-        del self.y_total
-        # del self._mutual_information
-        # del self._p_value
+        del self._mutual_information
+        del self._p_value
         del self.number_of_time_samples
         del self.pdfs_for_pyx
         del self.y_x

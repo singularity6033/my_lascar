@@ -196,7 +196,9 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         self.masking = params['masking']
         self.number_of_masking_bytes = params['number_of_masking_bytes']
         self.shuffle = params['shuffle']
+        self.shuffle_range = params['shuffle_range']
         self.shift = params['shift']
+        self.shift_range = params['shift_range']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -275,7 +277,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         # coefficients of exp (a) and switch (b)
         # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
         p_exp = self.linear_coefficient_exp * np.sum(value["leakage_model_output"][self.idx_exp] * curve_exp, axis=0)
-        p_switch = self.linear_coefficient_switch * np.sum(value["leakage_model_output"][self.idx_switch] * curve_switch, axis=0)
+        p_switch = self.linear_coefficient_switch * np.sum(
+            value["leakage_model_output"][self.idx_switch] * curve_switch, axis=0)
         for i in range(self.attack_sample_point, self.attack_sample_point + 3):
             p_el[i] = p_el[i] * self.sp_curve[i - self.attack_sample_point]
             p_exp[i] = p_exp[i] * self.sp_curve[i - self.attack_sample_point]
@@ -286,12 +289,18 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         value["power_components"] = np.vstack((np.vstack((p_el, p_exp)), p_switch))
 
         if self.shuffle:
-            np.random.shuffle(np.transpose(power))
+            if 0 <= self.shuffle_range[0] < self.number_of_time_samples and self.shuffle_range[0] < self.shuffle_range[1] < self.number_of_time_samples:
+                np.random.shuffle(np.transpose(power[self.shuffle_range[0]:self.shuffle_range[1] + 1]))
+            else:
+                print('[INFO] invalid shuffle range...')
 
         if self.shift:
-            shift_step = np.random.randint(0, self.no_time_samples - (self.attack_sample_point + 2))
-            power = np.roll(power, shift_step)
-            power[:shift_step] = 0
+            if self.shift_range <= self.no_time_samples - (self.attack_sample_point + 2):
+                shift_step = np.random.randint(0, self.shift_range)
+                power = np.roll(power, shift_step)
+                power[:shift_step] = 0
+            else:
+                print('[INFO] invalid shift range...')
 
         return Trace(power, value)
 
@@ -382,7 +391,9 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         self.masking = params['masking']
         self.number_of_masking_bytes = params['number_of_masking_bytes']
         self.shuffle = params['shuffle']
+        self.shuffle_range = params['shuffle_range']
         self.shift = params['shift']
+        self.shift_range = params['shift_range']
 
         if self.leakage_model_name == "default":
             self.leakage_model = HammingPrecomputedModel()
@@ -482,12 +493,18 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         value["power_components"] = np.vstack((p_el, p_exp))
 
         if self.shuffle:
-            np.random.shuffle(np.transpose(power))
+            if 0 <= self.shuffle_range[0] < self.number_of_time_samples and self.shuffle_range[0] < self.shuffle_range[1] < self.number_of_time_samples:
+                np.random.shuffle(np.transpose(power[self.shuffle_range[0]:self.shuffle_range[1] + 1]))
+            else:
+                print('[INFO] invalid shuffle range...')
 
         if self.shift:
-            shift_step = np.random.randint(0, self.no_time_samples - (self.attack_sample_point + 2))
-            power = np.roll(power, shift_step)
-            power[:shift_step] = 0
+            if self.shift_range <= self.no_time_samples - (self.attack_sample_point + 2):
+                shift_step = np.random.randint(0, self.shift_range)
+                power = np.roll(power, shift_step)
+                power[:shift_step] = 0
+            else:
+                print('[INFO] invalid shift range...')
 
         return Trace(power, value)
 

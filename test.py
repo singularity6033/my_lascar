@@ -36,9 +36,12 @@ import matplotlib.pyplot as plt
 # xx = fs.mutual_info_classif(c, x[:, 2])
 
 x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
+z = np.argmax(x)
 y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
 
-# b = np.array([[1, 5, 9], [2, 4, 6]])
+b = np.array([[1, 5, 9], [2, 4, 6]])
+c = np.array(np.max(b, axis=1), ndmin=2).T
+d = np.concatenate((c, c), axis=1)
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])

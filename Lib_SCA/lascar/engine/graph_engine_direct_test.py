@@ -1,0 +1,184 @@
+import gc
+from math import floor
+
+import numpy as np
+from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
+from sklearn.cluster import KMeans
+from TracyWidom import TracyWidom
+
+from . import PartitionerEngine, DpaEngine, Phase_Space_Reconstruction_Graph
+
+
+class GraphTestEngine(PartitionerEngine):
+    """
+    GraphTestEngine is a two-samples graph testing used to compute whether two graph samples G and H are drawn from
+    the same distribution or not
+    Ghoshdastidar, Debarghya, and Ulrike Von Luxburg. "Practical methods for graph two-sample testing."
+    Advances in Neural Information Processing Systems 31 (2018).
+    """
+
+    def __init__(self, name, partition_function, time_delay, dim, sampling_interval=1, r=3):
+        """
+        :param name:
+        :param partition_function: partition_function that will take trace values as an input and returns 0 or 1
+        :param time_delay: delayed time interval used in phase space reconstruction
+        :param dim: the dimension of embedding delayed time series (vectors)
+        :param sampling_interval: used to sample the delayed time series, default is 1
+        :param r: the number of communities (or rank) r only for approximation of P and Q used in the Tracy-Widom test
+                  noted that the power of the test is not sensitive to the choice of r
+        """
+        self.time_delay = time_delay
+        self.dim = dim
+        self.sampling_interval = sampling_interval
+        self.r = r
+        PartitionerEngine.__init__(self, name, partition_function, range(2), None)
+        self.logger.debug('Creating GraphTestEngine  "%s". ' % name)
+
+    def _initialize(self):
+
+        self._samples_by_partition = [None] * self._partition_size
+        self._partition_count = np.zeros((self._partition_size,), dtype=np.double)
+        self._batch_count = 0
+
+        self.size_in_memory += self._partition_count.nbytes
+
+    def _update(self, batch):
+        partition_values = list(map(self._partition_function, batch.values))
+        for i, v in enumerate(partition_values):
+            idx = self._partition_range_to_index[v]
+            self._partition_count[idx] += 1
+            one_leakage = np.array(batch.leakages[i], ndmin=2)
+            self._samples_by_partition[idx] = one_leakage if not isinstance(self._samples_by_partition[idx],
+                                                                            np.ndarray) else \
+                np.concatenate((self._samples_by_partition[idx], one_leakage), axis=0)
+
+    def _finalize(self):
+        p_value = -1
+        random_set, fixed_set = self._samples_by_partition[0], self._samples_by_partition[1]
+        m_r, m_f = self._partition_count[0], self._partition_count[1]
+
+        # convert 1-d time series into 2-d graphs by phase space reconstruction
+        init_graph_r = Phase_Space_Reconstruction_Graph(random_set, self.time_delay, self.dim, self.sampling_interval)
+        init_graph_r.generate()
+        init_graph_f = Phase_Space_Reconstruction_Graph(fixed_set, self.time_delay, self.dim, self.sampling_interval)
+        init_graph_f.generate()
+
+        # size of graph
+        self.number_of_nodes = init_graph_r.number_of_nodes
+
+        # convert determinate graphs into generalised RDPG which is also a type of inhomogeneous ER (IER) graphs
+        # grdpg_r = Generalised_RDPG(init_graph_r.adj_matrix, self.mode).generate()
+        # grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix, self.mode).generate()
+
+        sample_size = (m_r + m_f) // 2
+        if sample_size > self.number_of_nodes:
+            graph_samples_r = init_graph_r.adj_matrix
+            graph_samples_f = init_graph_f.adj_matrix
+            # graph_samples_f = np.ones(graph_samples_r.shape)
+            # it is a type of chi-square test statistic
+            mean_grdpg_r, mean_grdpg_f = np.mean(graph_samples_r, axis=0), np.mean(graph_samples_f, axis=0)
+            var_grdpg_r, var_grdpg_f = np.var(graph_samples_r, axis=0), np.var(graph_samples_f, axis=0)
+
+            nominator = 0
+            denominator = 0
+            for i in range(self.number_of_nodes):
+                for j in range(self.number_of_nodes):
+                    if i < j:
+                        term1 = (mean_grdpg_r[i][j] - mean_grdpg_f[i][j]) ** 2
+                        term2 = (var_grdpg_r[i][j] / m_r + var_grdpg_f[i][j] / m_f)
+                        if term1 != 0 and term2 == 0:
+                            p_value = 0
+                            break
+                        elif term2 == 0:
+                            continue
+                        nominator += term1
+                        denominator += term2
+            if p_value == -1:
+                test_statistic = nominator / denominator
+                test_statistic = np.nan_to_num(test_statistic)
+                # Even though it evaluates the upper tail area, the chi-square test is regarded as a two-tailed test (non-directional)
+                p_value = 1 - chi2.cdf(test_statistic, self.number_of_nodes * (self.number_of_nodes - 1) / 2)
+
+        elif 2 <= sample_size < self.number_of_nodes:
+            # proposed normality based test (Asymp-Normal)
+            # https://github.com/gdebarghya/Network-TwoSampleTesting/blob/master/codes/NormalityTest.m
+            graph_samples_r = init_graph_r.adj_matrix
+            graph_samples_f = init_graph_f.adj_matrix
+            m1 = floor(0.5 * min(m_r, m_f))
+            term1_1 = np.sum(graph_samples_r[:m1, :, :] - graph_samples_f[:m1, :, :], axis=0)
+            term1_2 = np.sum(graph_samples_r[m1:, :, :] - graph_samples_f[m1:, :, :], axis=0)
+            term2_1 = np.sum(graph_samples_r[:m1, :, :] + graph_samples_f[:m1, :, :], axis=0)
+            term2_2 = np.sum(graph_samples_r[m1:, :, :] + graph_samples_f[m1:, :, :], axis=0)
+            nominator = 0
+            denominator = 0
+            for i in range(self.number_of_nodes):
+                for j in range(self.number_of_nodes):
+                    if i < j:
+                        nominator += term1_1[i][j] * term1_2[i][j]
+                        denominator += term2_1[i][j] * term2_2[i][j]
+            test_statistic = nominator / np.sqrt(denominator)
+            p_value = 2 * norm.cdf(-abs(test_statistic))
+
+        elif sample_size == 1:
+            # it is a type of Tracy-Widom test statistic
+            # rewrite based on https://github.com/gdebarghya/Network-TwoSampleTesting/blob/master/codes/TracyWidomTest.m
+            graph_samples_r = init_graph_r.adj_matrix[0]
+            graph_samples_f = init_graph_f.adj_matrix[0]
+            c = graph_samples_r - graph_samples_f
+            idx = self._spectral_clustering(graph_samples_r, graph_samples_f)
+            for i in range(self.r):
+                for j in range(self.r):
+                    if i == j:
+                        temp = graph_samples_r[np.ix_(i == idx, j == idx)]
+                        # takes into account the diagonal is zero
+                        Pij = 0 if temp.shape[0] <= 1 else np.sum(temp) / (temp.shape[0] * temp.shape[0] - 1)
+                        temp = graph_samples_f[np.ix_(i == idx, j == idx)]
+                        Qij = 0 if temp.shape[0] <= 1 else np.sum(temp) / (temp.shape[0] * temp.shape[0] - 1)
+                        # continue
+                    else:
+                        temp = graph_samples_r[np.ix_(i == idx, j == idx)]
+                        Pij = np.mean(temp)
+                        temp = graph_samples_f[np.ix_(i == idx, j == idx)]
+                        Qij = np.mean(temp)
+                    denominator = np.sqrt((self.number_of_nodes - 1) * Pij * (1 - Pij) + Qij * (1 - Qij))
+                    if denominator == 0:
+                        denominator = 1e-5
+                    c[np.ix_(i == idx, j == idx)] = c[np.ix_(i == idx, j == idx)] / denominator
+            c = np.nan_to_num(c)
+            u, s, et = np.linalg.svd(c)
+            # using the largest singular value
+            test_statistic = self.number_of_nodes ** (2 / 3) * (s[0] - 2)
+            tw1_dist = TracyWidom(beta=1)
+            p_value = min(1, 2 * (1 - tw1_dist.cdf(test_statistic)))
+        # self._clean()
+        # print(p_value)
+        return p_value
+
+    def _clean(self):
+        del self._samples_by_partition
+        del self._partition_count
+        gc.collect()
+        self.size_in_memory = 0
+
+    def _spectral_clustering(self, a, b):
+        """
+        spectral clustering to find common block structure
+        a, b are two graphs, and r is a scalar (specifying number of communities)
+        """
+        c = (a + b) / 2
+        d = np.sum(c, axis=1)
+        d[d == 0] = 1
+        d = 1 / np.sqrt(d)
+        c = c * np.dot(d, d.T)
+        u, s, et = np.linalg.svd(c)
+        # using r largest dominant singular vectors
+        e = np.array(et[:self.r, :], ndmin=2).T
+        norm_e = np.array(np.sqrt(np.sum(e ** 2, axis=1)), ndmin=2).T
+        norm_e[norm_e == 0] = 1
+        e = e / norm_e
+        km = KMeans(n_clusters=self.r, random_state=0).fit(e)
+        return km.labels_
+
+
+class GraphTestEngine_Attack(DpaEngine):
+    pass

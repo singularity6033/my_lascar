@@ -35,10 +35,10 @@ cmi_config = {
     'attack_range': range(0, 4),
 
     # number of shuffles
-    'num_shuffles': 25,
+    'num_shuffles': 2,
 
     # batch size
-    'batch_size': 1000000,
+    'batch_size': 10000,
 
     # plotting params
     'figure_params': {'title': ['cmi+mi', 'cmi+pv'], 'x_label': ['time', 'time'], 'y_label': ['mi', 'pv']}

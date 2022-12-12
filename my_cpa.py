@@ -8,6 +8,8 @@ It needs:
 - a "guess_range" which will define what are the guess possible values
 
 """
+import os
+
 from matplotlib import pyplot as plt
 
 from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
@@ -16,7 +18,7 @@ from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_ra
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import CpaEngine, hamming, Session, Single_Result_OutputMethod, numerical_success_rate
 from Lib_SCA.lascar.tools.aes import sbox
-from real_traces_generator import real_trace_generator
+# from real_traces_generator import real_trace_generator
 
 
 def cpa_attack(params, trace_params):
@@ -26,7 +28,8 @@ def cpa_attack(params, trace_params):
     elif params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
-        container = real_trace_generator()
+        pass
+        # container = real_trace_generator()
 
     a_byte = container.idx_exp[0]
     attack_time = container.attack_sample_point
@@ -46,10 +49,16 @@ def cpa_attack(params, trace_params):
                            guess_range,
                            solution=params['idx_of_correct_key_guess'])
 
+    output_path = 'results/cpa_test'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
     session = Session(container,
                       engine=cpa_engine,
                       output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
-                                                               output_path='./plots/cpa.png'))
+                                                               output_path=output_path,
+                                                               filename='cpa',
+                                                               contain_raw_file=True),
+                      output_steps=params['batch_size'])
 
     session.run(batch_size=params['batch_size'])
     # results = cpa_engine.finalize()
