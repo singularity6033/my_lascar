@@ -49,7 +49,7 @@ graph-based test
 """
 graph_test_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+    'mode': 'normal',
 
     # engine name (trivial)
     'engine_name': 'graph_test',

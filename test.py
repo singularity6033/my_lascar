@@ -2,6 +2,7 @@ from math import inf
 
 import numpy as np
 import sklearn.feature_selection as fs
+from PyAstronomy import pyaC
 from scipy import integrate
 from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete, bernoulli
 from sklearn.cluster import KMeans
@@ -35,13 +36,26 @@ import matplotlib.pyplot as plt
 # y = np.array([0, 1, 2, 2, 1])
 # xx = fs.mutual_info_classif(c, x[:, 2])
 
-x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
-z = np.argmax(x)
-y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
+# x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
+# z = np.argmax(x)
+# # zz = np.where(x == 0)
+# y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
+#
+# b = np.array([[1, 5, 9], [2, 4, 6]])
+# bb = np.linalg.norm(b, ord=inf, axis=0)
+# ccc = b[:, [0, 1]]
+# c = np.array(np.max(b, axis=1), ndmin=2).T
+# d = np.concatenate((c, c), axis=1)
+#
+# dic = dict()
+# dic.update({'name': 123})
 
-b = np.array([[1, 5, 9], [2, 4, 6]])
-c = np.array(np.max(b, axis=1), ndmin=2).T
-d = np.concatenate((c, c), axis=1)
+# Generate some 'data'
+x = np.arange(2.)**2
+y = np.sin(x)
+
+# Get coordinates and indices of zero crossings
+xc, xi = pyaC.zerocross1d(x, y, getIndices=True)
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])

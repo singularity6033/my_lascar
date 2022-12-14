@@ -12,10 +12,11 @@ from tqdm import tqdm
 
 from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import graph_test_config
-from Lib_SCA.configs.simulation_configs import fixed_random_traces
+from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import Single_Result_OutputMethod, Incremental_Batch_OutputMethod
-from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine
+from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine, GraphTestEngine_Attack
+from Lib_SCA.lascar.tools.aes import sbox
 
 
 # from real_traces_generator import real_trace_generator
@@ -43,6 +44,48 @@ def graph_based_test(params, trace_params):
                                                                    output_path='',
                                                                    display=False),
                       output_steps=params['batch_size'])
+    session.run(batch_size=params['batch_size'])
+
+
+def graph_based_test_attack(params, trace_params):
+    if params['mode'] == 'normal':
+        container = SimulatedPowerTraceContainer(config_params=trace_params)
+    elif params['mode'] == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+    elif params['mode'] == 'real':
+        pass
+        # container = real_trace_generator()
+
+    attack_byte = container.idx_exp[0]
+    attack_time = container.attack_sample_point
+
+    # selection attack regions along time axis
+    # container.leakage_section = params['attack_range']
+    """
+    Then we build the DpaEngine.
+
+    If you take a look at the help for DpaEngine, you'll see that it needs 3 things to be instantiated:
+    - a name for the engine ("dpa" in our case)
+    - a selection function (under guess hypothesis): this function will separate the traces into two sets, depending on a hypothesis: "guess". This function will be applied on every trace values, for every possible guess.
+    - a guess_range: what are the guesses you want to test?
+    """
+
+    def selection_function(value, guess, ab=attack_byte, at=attack_time):
+        # LSB
+        return sbox[value["plaintext"][ab][at] ^ guess] & 1
+
+    guess_range = range(256)
+
+    dpa_engine = GraphTestEngine_Attack(params['engine_name'],
+                                        selection_function,
+                                        guess_range,
+                                        solution=0)
+
+    session = Session(container,
+                      engine=dpa_engine,
+                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
+                                                               output_path='./plots/dpa.png'))
+
     session.run(batch_size=params['batch_size'])
 
 
@@ -120,5 +163,6 @@ if __name__ == '__main__':
     #     # graph_based_mi(gt_params, dict_i)
 
     # graph_based_mi(graph_test_config, fixed_random_traces)
-    graph_based_test(graph_test_config, fixed_random_traces)
+    # graph_based_test(graph_test_config, fixed_random_traces)
+    graph_based_test_attack(graph_test_config, normal_simulated_traces)
     # graph_based_distance(graph_test_config, fixed_random_traces)

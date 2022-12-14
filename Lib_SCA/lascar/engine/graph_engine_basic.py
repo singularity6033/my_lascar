@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import norm, bernoulli
+from PyAstronomy import pyaC
 
 
 class Phase_Space_Reconstruction_Graph:
@@ -42,18 +43,6 @@ class Phase_Space_Reconstruction_Graph:
         max_dim = self.number_of_time_points // self.time_delay + 1
         xxx = self._false_nearest_neighbor(self.time_series[0, :], self.time_delay, max_dim)
 
-    def generate(self):
-        """
-        the time delayed embedding process
-        """
-        for i in range(self.number_of_time_series):
-            tmp = np.zeros((self.number_of_nodes, self.dim))
-            for j in range(self.number_of_nodes):
-                tmp[j, :] = self.time_series[i, j:j + (self.dim - 1) * self.time_delay + 1:self.time_delay]
-            weighted_adj = self._calc_euclidean_distances(tmp, tmp)
-            self.adj_matrix[i, :, :] = self._convert_to_unweighted_graphs(
-                weighted_adj) if self.to_unweighted else weighted_adj
-
     @staticmethod
     def _calc_euclidean_distances(a, b):
         abt = np.dot(a, b.T)
@@ -65,39 +54,51 @@ class Phase_Space_Reconstruction_Graph:
         res[np.diag_indices_from(res)] = 0
         return np.nan_to_num(res)
 
-    def _convert_to_unweighted_graphs(self, g):
-        """
-        inputs: one adjacent matrix of weighted graph
-        using the graph density to choose the optimal threshold
-        for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
-        m-number of edges; n-number of nodes
-        """
-        potential_threshold = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
-        best_g = 0
-        prev_density = 0
-        best_diff = float('-inf')
-        for i, threshold in enumerate(potential_threshold):
-            tmp = np.copy(g)
-            idx_0 = tmp > threshold
-            idx_1 = tmp <= threshold
-            tmp[idx_0], tmp[idx_1] = 0, 1
-            tmp[np.diag_indices_from(tmp)] = 0
-            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
-            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
-            cur_diff = 0 if i == 0 else (curr_density - prev_density)
-            if cur_diff > best_diff:
-                best_diff = cur_diff
-                best_g = tmp
-            prev_density = curr_density
-        return best_g
+    @staticmethod
+    def _calc_sup_norm(a, b, m):
+        res = []
+        for i in range(m):
+            for j in range(m):
+                if i < j:
+                    res.append(np.max(np.abs(a[i, :] - b[i, :])))
+        return res
 
-    def _c_c_method(self):
+    def _psr_single_series(self, one_series, dim, time_delay):
+        n = one_series.shape[0]
+        space_points = n - (dim - 1) * time_delay // self.sampling_interval
+        res = np.zeros((space_points, dim))
+        for i in range(space_points):
+            res[i, :] = one_series[i: i + (dim - 1) * time_delay + 1:time_delay]
+        return res
+
+    def _c_c_method(self, one_series):
         """
         using c-c method to determine the optimal time delay for phase space reconstruction
         ref: Kim, H_S, R. Eykholt, and J. D. Salas. "Nonlinear dynamics, delay times, and embedding windows."
         Physica D: Nonlinear Phenomena 127.1-2 (1999): 48-60.
         """
-        pass
+        n = one_series.shape[0]
+        std = np.std(one_series)
+        r = [0.5 * std, 1.0 * std, 1.5 * std, 2.0 * std]
+        max_t = self.number_of_time_points // (5 - 1)
+        t_series = np.arange(1, max_t + 1)
+        res = np.zeros(t_series.shape)
+
+        for t_i, t in enumerate(t_series):
+            tmp = np.zeros((4, 4))
+            for dim_i, dim in enumerate(range(2, 6)):
+                for j, rj in enumerate(r):
+                    space_points = n - (dim - 1) * t // self.sampling_interval
+                    y = self._psr_single_series(one_series, dim, t)
+                    sup_norm_res = np.array(self._calc_sup_norm(y, y))
+                    sum_sup_norm_res = np.sum(np.heaviside(rj - sup_norm_res, 1.0))
+                    c = sum_sup_norm_res / ((space_points - 1) * space_points)
+                    tmp[dim_i][j] = c
+            res[t_i] = np.sum(tmp)
+
+        # find zero crossing point
+        xc, xi = pyaC.zerocross1d(t_series, res, getIndices=True)
+        return xc[0] if xc else t_series[0]
 
     def _false_nearest_neighbor(self, one_series, time_delay, max_dim, rtol=9, atol=2):
         """
@@ -130,13 +131,42 @@ class Phase_Space_Reconstruction_Graph:
                 return dim
         return np.argmin(fnn) + 1
 
-    def _psr_single_series(self, one_series, dim, time_delay):
-        n = one_series.shape[0]
-        space_points = n - (dim - 1) * time_delay // self.sampling_interval
-        res = np.zeros((space_points, dim))
-        for i in range(space_points):
-            res[i, :] = one_series[i: i + (dim - 1) * time_delay + 1:time_delay]
-        return res
+    def generate(self):
+        """
+        the time delayed embedding process
+        """
+        for i in range(self.number_of_time_series):
+            tmp = np.zeros((self.number_of_nodes, self.dim))
+            for j in range(self.number_of_nodes):
+                tmp[j, :] = self.time_series[i, j:j + (self.dim - 1) * self.time_delay + 1:self.time_delay]
+            weighted_adj = self._calc_euclidean_distances(tmp, tmp)
+            self.adj_matrix[i, :, :] = self._convert_to_unweighted_graphs(weighted_adj) if self.to_unweighted else weighted_adj
+
+    def _convert_to_unweighted_graphs(self, g):
+        """
+        inputs: one adjacent matrix of weighted graph
+        using the graph density to choose the optimal threshold
+        for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
+        m-number of edges; n-number of nodes
+        """
+        potential_threshold = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
+        best_g = 0
+        prev_density = 0
+        best_diff = float('-inf')
+        for i, threshold in enumerate(potential_threshold):
+            tmp = np.copy(g)
+            idx_0 = tmp > threshold
+            idx_1 = tmp <= threshold
+            tmp[idx_0], tmp[idx_1] = 0, 1
+            tmp[np.diag_indices_from(tmp)] = 0
+            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
+            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
+            cur_diff = 0 if i == 0 else (curr_density - prev_density)
+            if cur_diff > best_diff:
+                best_diff = cur_diff
+                best_g = tmp
+            prev_density = curr_density
+        return best_g
 
 
 class Generalised_RDPG:
