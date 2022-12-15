@@ -265,7 +265,7 @@ class OneOutputResults(OutputMethod):
                     os.makedirs(raw_file_path1)
                 if not os.path.exists(raw_file_path2):
                     os.makedirs(raw_file_path2)
-                raw_data1 = pd.DataFrame(self.one_result)
+                raw_data1 = pd.DataFrame(np.array([self.one_result]*2))
                 raw_data2 = pd.DataFrame(self.along_trace_results)
                 writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
                 writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))

@@ -43,6 +43,7 @@ def graph_based_test(params, trace_params):
     session = Session(container, engine=graph_test_engine,
                       output_method=OneOutputResults(figure_params=params['figure_params'],
                                                      output_path=output_path,
+                                                     filename='yzs',
                                                      display=False),
                       output_steps=params['batch_size'])
     session.run(batch_size=params['batch_size'])

@@ -71,7 +71,7 @@ configs for fixed_random_traces
 """
 fixed_random_traces = {
     # total number of traces
-    'number_of_traces': 10000,
+    'number_of_traces': 5000,
     # total number of bytes for each time sample in one trace
     'number_of_bytes': 1,
 

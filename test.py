@@ -56,9 +56,10 @@ y = np.sin(x)
 
 # Get coordinates and indices of zero crossings
 # xc, xi = pyaC.zerocross1d(x, y, getIndices=True)
-fig, axs = [None] * 2, [None] * 2
-fig[0], axs[0] = plt.subplots(1, 2, figsize=(16, 6))
-fig[1], axs[1] = plt.subplots(1, 2, figsize=(16, 6))
+# fig, axs = [None] * 2, [None] * 2
+# fig[0], axs[0] = plt.subplots(1, 2, figsize=(16, 6))
+# fig[1], axs[1] = plt.subplots(1, 2, figsize=(16, 6))
+xx = np.array((1))
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])
