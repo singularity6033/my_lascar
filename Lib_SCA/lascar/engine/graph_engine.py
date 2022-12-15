@@ -6,11 +6,11 @@ from scipy.stats import ttest_ind, chisquare, chi2_contingency
 from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
 from statsmodels.stats.weightstats import ztest
 from sklearn.cluster import KMeans
-from TracyWidom import TracyWidom
+# from TracyWidom import TracyWidom
 import sklearn.feature_selection as fs
 from tqdm import tqdm
 import networkx as nx
-import netcomp as nc
+# import netcomp as nc
 
 from . import PartitionerEngine
 

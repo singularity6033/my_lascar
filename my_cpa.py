@@ -54,7 +54,8 @@ def cpa_attack(params, trace_params):
         os.makedirs(output_path)
     session = Session(container,
                       engine=cpa_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
+                      output_method=Single_Result_OutputMethod(figure_params_along_time=params['figure_params_along_time'],
+                                                               figure_params_along_trace=params['figure_params_along_trace'],
                                                                output_path=output_path,
                                                                filename='cpa',
                                                                contain_raw_file=True),

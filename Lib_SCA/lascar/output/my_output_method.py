@@ -12,79 +12,115 @@ import numpy as np
 class Single_Result_OutputMethod(OutputMethod):
     """
     self defined output method designed for single output method
+
     """
 
     def __init__(
             self,
             *engines,
-            figure_params=None,
+            figure_params_along_time=None,
+            figure_params_along_trace=None,
             output_path=None,
             filename=None,
             contain_raw_file=True,
-            display=True,
+            display=False,
             along_time=True,
             along_trace=True,
     ):
         """
-        :param figure_params: basic params to plot figures (dictionary)
-        ex: {'title': 'cmi', 'x_label': 'time', 'y_label': 'mi'}
+        :param figure_params_along_time: figure parameters of along_time results
+        :param figure_params_along_trace: figure parameters of along_trace results
         :param engines: engines to be tracked
         :param output_path: it set, whether to save results (figure is saved as default)
         :param contain_raw_file: if true, save results in a .xlsx file
         :param display: it set, display or show the figure
         """
         OutputMethod.__init__(self, *engines)
-        self.figure_params = figure_params
+        self.figure_params_along_time = figure_params_along_time
+        self.figure_params_along_trace = figure_params_along_trace
         self.output_path = output_path
         self.filename = filename
         self.contain_raw_file = contain_raw_file
         self.display = display
+        self.along_time = along_time
+        self.along_trace = along_trace
 
-        self.total_results = None
-        self.batch_results = []
+        self.along_time_results = None
+        self.along_trace_results = None
 
     def _update(self, engine, results):
-        plt.title(self.figure_params['title'])
-        plt.xlabel(self.figure_params['x_label'])
-        plt.ylabel(self.figure_params['y_label'])
-
-        if isinstance(results, np.ndarray) and len(results.shape) == 1:
-            self.batch_results.append(np.max(results))
-        elif isinstance(results, np.ndarray) and len(results.shape) == 2:
-            self.batch_results.append(np.max(results, axis=1))
+        self.engine = engine
+        if isinstance(results, np.ndarray) and len(results.shape) == 2:
+            self.along_time_results = results
+            optima = np.array(np.max(results, axis=1), ndmin=2).T
+            self.along_trace_results = optima if not isinstance(self.along_trace_results, np.ndarray) else \
+                np.concatenate((self.along_trace_results, optima), axis=1)
 
     def _finalize(self):
-        if isinstance(results, np.ndarray) and len(results.shape) == 1:
-            plt.plot(results)
-        elif isinstance(results, np.ndarray) and len(results.shape) == 2:
-            if engine.solution == -1:
-                plt.plot(results.T)
-            else:
-                # show the result of correct key guess
-                for i in range(results.shape[0]):
-                    if i != engine.solution:
-                        plt.plot(results[i, :], color='tab:gray')
-                plt.plot(results[engine.solution, :], color='red')
+        plt.figure(0)
+        plt.title(self.figure_params_along_time['title'])
+        plt.xlabel(self.figure_params_along_time['x_label'])
+        plt.ylabel(self.figure_params_along_time['y_label'])
+
+        plt.figure(1)
+        plt.title(self.figure_params_along_trace['title'])
+        plt.xlabel(self.figure_params_along_trace['x_label'])
+        plt.ylabel(self.figure_params_along_trace['y_label'])
+
+        if self.engine.solution == -1:
+            plt.figure(0)
+            plt.plot(self.along_time_results.T)
+            plt.figure(1)
+            plt.plot(self.along_trace_results.T)
+        else:
+            # show the result of correct key guess
+            for i in range(self.along_time_results.shape[0]):
+                if i != self.engine.solution:
+                    plt.figure(0)
+                    plt.plot(self.along_time_results[i, :], color='tab:gray')
+                    plt.figure(1)
+                    plt.plot(self.along_trace_results[i, :], color='tab:gray')
+            plt.figure(0)
+            plt.plot(self.along_time_results[self.engine.solution, :], color='red')
+            plt.figure(1)
+            plt.plot(self.along_trace_results[self.engine.solution, :], color='red')
 
         if self.output_path:
-            plot_path = os.sep.join([self.output_path, 'plots'])
-            if not os.path.exists(plot_path):
-                os.makedirs(plot_path)
-            plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
+            plot_path1 = os.sep.join([self.output_path, 'along_time', 'plot'])
+            plot_path2 = os.sep.join([self.output_path, 'along_trace', 'plot'])
+            if not os.path.exists(plot_path1):
+                os.makedirs(plot_path1)
+            if not os.path.exists(plot_path2):
+                os.makedirs(plot_path2)
+            plt.figure(0)
+            plt.savefig(os.sep.join([plot_path1, self.filename + '.png']))
+            plt.figure(1)
+            plt.savefig(os.sep.join([plot_path2, self.filename + '.png']))
             if self.contain_raw_file:
-                raw_file_path = os.sep.join([self.output_path, 'raw_data'])
-                if not os.path.exists(raw_file_path):
-                    os.makedirs(raw_file_path)
-                raw_data = pd.DataFrame(results)
-                writer = pd.ExcelWriter(os.sep.join([raw_file_path, 'data.xlsx']))
-                raw_data.to_excel(writer, self.filename, float_format='%.5f')  # 2nd param is sheet name
-                writer.close()
+                raw_file_path1 = os.sep.join([self.output_path, 'along_time', 'tables'])
+                raw_file_path2 = os.sep.join([self.output_path, 'along_trace', 'tables'])
+                if not os.path.exists(raw_file_path1):
+                    os.makedirs(raw_file_path1)
+                if not os.path.exists(raw_file_path2):
+                    os.makedirs(raw_file_path2)
+                raw_data1 = pd.DataFrame(self.along_time_results)
+                raw_data2 = pd.DataFrame(self.along_trace_results)
+                writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
+                writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))
+                raw_data1.to_excel(writer1, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                raw_data2.to_excel(writer2, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                writer1.close()
+                writer2.close()
 
         if self.display:
+            plt.figure(0)
+            plt.show()
+            plt.figure(1)
             plt.show()
 
-    def from_output_method(self, output_method):
-        pass
+
+def from_output_method(self, output_method):
+    pass
 
 
 class Multiple_Results_OutputMethod(OutputMethod):

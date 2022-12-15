@@ -26,7 +26,6 @@ class YAMLConfig:
 
     def get_config(self, config_name):
         path = self.CONFIG_PATH + config_name + '.yaml'
-        # print(path)
         try:
             mtime = os.path.getmtime(path)
         except OSError as e:
@@ -76,8 +75,8 @@ class JSONConfig:
         input a list of dicts
         """
         path = self.CONFIG_PATH + self.config_name + '.json'
-        # if not os.path.exists(path):
-        #     os.makedirs(path)
+        if os.path.isfile(path):
+            os.remove(path)
         with open(path, 'a') as f:
             json.dump(dictionary, f)
             f.write("\n")

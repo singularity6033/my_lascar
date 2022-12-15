@@ -8,7 +8,7 @@ from sklearn.cluster import KMeans
 
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
-from pyitlib import discrete_random_variable as drv
+# from pyitlib import discrete_random_variable as drv
 
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 import matplotlib.pyplot as plt
@@ -16,7 +16,12 @@ import matplotlib.pyplot as plt
 # container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
 # container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
 # yyy = container[:3000].leakages
-
+# a = (1, ) + (10, )
+# b = np.array([0, 1, 2], ndmin=2)
+# for i, j in enumerate(range(3, 6)):
+#     print('i: ', i)
+#     print('j: ', j)
+#     print('77777')
 #
 # container.plot_traces(list(range(container.number_of_traces)))
 # container.plot_traces(list(range(1, container.number_of_traces, 2)))
@@ -25,7 +30,10 @@ import matplotlib.pyplot as plt
 # a = [i for i in range(0)]
 # a = np.arange(10)
 # b = a[6:(3-1)*2+6+1:2]
-# a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+z = np.array(np.sum(a, axis=1), ndmin=2).T
+
+# b = np.sum(a, axis=0)
 # c = np.ones((5, 1))
 # x = np.array([[0, 0, 0],
 #             [1, 1, 0],
@@ -35,13 +43,13 @@ import matplotlib.pyplot as plt
 # y = np.array([0, 1, 2, 2, 1])
 # xx = fs.mutual_info_classif(c, x[:, 2])
 
-x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
-z = np.argmax(x)
-y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
-
-b = np.array([[1, 5, 9], [2, 4, 6]])
-c = np.array(np.max(b, axis=1), ndmin=2).T
-d = np.concatenate((c, c), axis=1)
+# x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
+# z = np.argmax(x)
+# y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
+#
+# b = np.array([[1, 5, 9], [2, 4, 6]])
+# c = np.array(np.max(b, axis=1), ndmin=2).T
+# d = np.concatenate((c, c), axis=1)
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])

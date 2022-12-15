@@ -117,7 +117,7 @@ class Container:
     """
     leakage_section: Optional[Any]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):   # collect unmatched key-value parameters by dict
         """
         Basic Constructor.
 
