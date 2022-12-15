@@ -207,9 +207,9 @@ class MultiplePlotsOutputMethod(OutputMethod):
                 fig[i].show()
 
 
-class Incremental_Batch_OutputMethod(OutputMethod):
+class OneOutputResults(OutputMethod):
     """
-        self defined output method designed for single output method
+        self defined output method designed for one output method
         """
 
     def __init__(
@@ -236,10 +236,43 @@ class Incremental_Batch_OutputMethod(OutputMethod):
         self.contain_raw_file = contain_raw_file
         self.display = display
 
-        self.stored_results = None
+        self.one_result = None
+        self.along_trace_results = []
 
     def _update(self, engine, results):
-        print(results)
+        self.engine = engine
+        if isinstance(results, float):
+            self.one_result = results
+            self.along_trace_results.append(results)
 
     def _finalize(self):
-        pass
+        plt.title(self.figure_params['title'])
+        plt.xlabel(self.figure_params['x_label'])
+        plt.ylabel(self.figure_params['y_label'])
+
+        plt.plot(self.along_trace_results)
+
+        if self.output_path:
+            plot_path = os.sep.join([self.output_path, 'along_trace', 'plot'])
+            if not os.path.exists(plot_path):
+                os.makedirs(plot_path)
+            plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
+
+            if self.contain_raw_file:
+                raw_file_path1 = os.sep.join([self.output_path, 'one_result', 'tables'])
+                raw_file_path2 = os.sep.join([self.output_path, 'along_trace', 'tables'])
+                if not os.path.exists(raw_file_path1):
+                    os.makedirs(raw_file_path1)
+                if not os.path.exists(raw_file_path2):
+                    os.makedirs(raw_file_path2)
+                raw_data1 = pd.DataFrame(self.one_result)
+                raw_data2 = pd.DataFrame(self.along_trace_results)
+                writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
+                writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))
+                raw_data1.to_excel(writer1, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                raw_data2.to_excel(writer2, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                writer1.close()
+                writer2.close()
+
+        if self.display:
+            plt.show()

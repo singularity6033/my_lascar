@@ -14,7 +14,7 @@ from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import graph_test_config
 from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import SinglePlotOutputMethod, Incremental_Batch_OutputMethod
+from Lib_SCA.lascar import SinglePlotOutputMethod, OneOutputResults
 from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine, GraphTestEngine_Attack
 from Lib_SCA.lascar.tools.aes import sbox
 
@@ -38,11 +38,12 @@ def graph_based_test(params, trace_params):
                                         time_delay=2,
                                         dim=3)
     # output_path = trace_params['_id']
+    output_path = 'results/graph_test'
     # We choose here to plot the resulting curve
     session = Session(container, engine=graph_test_engine,
-                      output_method=Incremental_Batch_OutputMethod(figure_params=params['figure_params'],
-                                                                   output_path='',
-                                                                   display=False),
+                      output_method=OneOutputResults(figure_params=params['figure_params'],
+                                                     output_path=output_path,
+                                                     display=False),
                       output_steps=params['batch_size'])
     session.run(batch_size=params['batch_size'])
 
@@ -160,6 +161,6 @@ if __name__ == '__main__':
     #     # graph_based_mi(gt_params, dict_i)
 
     # graph_based_mi(graph_test_config, fixed_random_traces)
-    # graph_based_test(graph_test_config, fixed_random_traces)
+    graph_based_test(graph_test_config, fixed_random_traces)
     # graph_based_test_attack(graph_test_config, normal_simulated_traces)
-    graph_based_distance(graph_test_config, fixed_random_traces)
+    # graph_based_distance(graph_test_config, fixed_random_traces)

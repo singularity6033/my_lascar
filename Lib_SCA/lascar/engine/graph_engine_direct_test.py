@@ -53,7 +53,7 @@ class GraphTestEngine(PartitionerEngine):
                 np.concatenate((self._samples_by_partition[idx], one_leakage), axis=0)
 
     def _finalize(self):
-        p_value = -1
+        p_value = -1.0
         random_set, fixed_set = self._samples_by_partition[0], self._samples_by_partition[1]
         m_r, m_f = self._partition_count[0], self._partition_count[1]
 

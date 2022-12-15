@@ -71,7 +71,7 @@ configs for fixed_random_traces
 """
 fixed_random_traces = {
     # total number of traces
-    'number_of_traces': 50000,
+    'number_of_traces': 10000,
     # total number of bytes for each time sample in one trace
     'number_of_bytes': 1,
 
@@ -106,7 +106,7 @@ fixed_random_traces = {
     # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
     # automatically i1 the code
     'noise_mean_el': 0,
-    'noise_sigma_el': 0.5,
+    'noise_sigma_el': 0.2,
 
     # constant term used in calculation of trace power
     'constant': 0,

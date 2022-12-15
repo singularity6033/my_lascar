@@ -58,5 +58,5 @@ graph_test_config = {
     'batch_size': 1000,
 
     # plotting params
-    'figure_params': {'title': 'graph_test_result', 'x_label': 'time', 'y_label': '***'}
+    'figure_params': {'title': 'graph_test_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
