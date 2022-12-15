@@ -2,13 +2,14 @@ from math import inf
 
 import numpy as np
 import sklearn.feature_selection as fs
+from PyAstronomy import pyaC
 from scipy import integrate
 from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete, bernoulli
 from sklearn.cluster import KMeans
 
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
-# from pyitlib import discrete_random_variable as drv
+from pyitlib import discrete_random_variable as drv
 
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 import matplotlib.pyplot as plt
@@ -16,12 +17,7 @@ import matplotlib.pyplot as plt
 # container = SimulatedPowerTraceContainer('normal_simulated_traces.yaml')
 # container = SimulatedPowerTraceFixedRandomContainer('fixed_random_traces.yaml')
 # yyy = container[:3000].leakages
-# a = (1, ) + (10, )
-# b = np.array([0, 1, 2], ndmin=2)
-# for i, j in enumerate(range(3, 6)):
-#     print('i: ', i)
-#     print('j: ', j)
-#     print('77777')
+
 #
 # container.plot_traces(list(range(container.number_of_traces)))
 # container.plot_traces(list(range(1, container.number_of_traces, 2)))
@@ -30,10 +26,7 @@ import matplotlib.pyplot as plt
 # a = [i for i in range(0)]
 # a = np.arange(10)
 # b = a[6:(3-1)*2+6+1:2]
-a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-z = np.array(np.sum(a, axis=1), ndmin=2).T
-
-# b = np.sum(a, axis=0)
+# a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 # c = np.ones((5, 1))
 # x = np.array([[0, 0, 0],
 #             [1, 1, 0],
@@ -45,11 +38,27 @@ z = np.array(np.sum(a, axis=1), ndmin=2).T
 
 # x = np.array([0, 1, 0, 1, 1, 1, 1, 0, 1])
 # z = np.argmax(x)
+# # zz = np.where(x == 0)
 # y = np.array([1, 0, 0, 0, 0, 1, 0, 1, 1])
 #
 # b = np.array([[1, 5, 9], [2, 4, 6]])
+# bb = np.linalg.norm(b, ord=inf, axis=0)
+# ccc = b[:, [0, 1]]
 # c = np.array(np.max(b, axis=1), ndmin=2).T
 # d = np.concatenate((c, c), axis=1)
+#
+# dic = dict()
+# dic.update({'name': 123})
+
+# Generate some 'data'
+x = np.arange(2.)**2
+y = np.sin(x)
+
+# Get coordinates and indices of zero crossings
+# xc, xi = pyaC.zerocross1d(x, y, getIndices=True)
+fig, axs = [None] * 2, [None] * 2
+fig[0], axs[0] = plt.subplots(1, 2, figsize=(16, 6))
+fig[1], axs[1] = plt.subplots(1, 2, figsize=(16, 6))
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])

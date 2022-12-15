@@ -28,4 +28,4 @@ from .plot_output_method import RankProgressionOutputMethod
 from .plot_output_method import FullRankProgressionOutputMethod
 from .rank_estimation import RankEstimation
 from .table_output_method import TableOutputMethod
-from .my_output_method import Single_Result_OutputMethod, Multiple_Results_OutputMethod, Incremental_Batch_OutputMethod
+from .my_output_method import SinglePlotOutputMethod, MultiplePlotsOutputMethod, Incremental_Batch_OutputMethod

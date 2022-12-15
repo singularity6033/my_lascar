@@ -14,7 +14,7 @@ from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import graph_test_config
 from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import Single_Result_OutputMethod, Incremental_Batch_OutputMethod
+from Lib_SCA.lascar import SinglePlotOutputMethod, Incremental_Batch_OutputMethod
 from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine, GraphTestEngine_Attack
 from Lib_SCA.lascar.tools.aes import sbox
 
@@ -83,8 +83,8 @@ def graph_based_test_attack(params, trace_params):
 
     session = Session(container,
                       engine=dpa_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
-                                                               output_path='./plots/dpa.png'))
+                      output_method=SinglePlotOutputMethod(figure_params=params['figure_params'],
+                                                           output_path='./plots/dpa.png'))
 
     session.run(batch_size=params['batch_size'])
 
@@ -107,10 +107,7 @@ def graph_based_mi(params, trace_params):
     output_path = trace_params['_id']
 
     # We choose here to plot the resulting curve
-    session = Session(container, engine=graph_test_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
-                                                               output_path=output_path,
-                                                               display=False))
+    session = Session(container, engine=graph_test_engine)
     session.run(batch_size=params['batch_size'])
 
 
