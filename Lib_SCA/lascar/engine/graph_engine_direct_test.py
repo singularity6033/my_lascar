@@ -6,7 +6,7 @@ from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
 from sklearn.cluster import KMeans
 from TracyWidom import TracyWidom
 
-from . import PartitionerEngine, DpaEngine, Phase_Space_Reconstruction_Graph
+from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph
 
 
 class GraphTestEngine(PartitionerEngine):
@@ -180,5 +180,178 @@ class GraphTestEngine(PartitionerEngine):
         return km.labels_
 
 
-class GraphTestEngine_Attack(DpaEngine):
-    pass
+class GraphTestEngine_Attack(GuessEngine):
+    """
+    attack version of GraphTestEngine, pls ref to the DpaEngine, where the LSB can be used
+    """
+    def __init__(self, name, selection_function, guess_range, time_delay, dim, sampling_interval=1, r=3, solution=None):
+        """
+        :param name:
+        :param param selection_function: takes a value and a guess_guess as input, returns 0 or 1.
+        :param guess_range: what are the values for the guess guess
+        :param time_delay: delayed time interval used in phase space reconstruction
+        :param dim: the dimension of embedding delayed time series (vectors)
+        :param sampling_interval: used to sample the delayed time series, default is 1
+        :param r: the number of communities (or rank) r only for approximation of P and Q used in the Tracy-Widom test
+                  noted that the power of the test is not sensitive to the choice of r
+        :param solution: if known, indicate the correct guess guess.
+        """
+        self.time_delay = time_delay
+        self.dim = dim
+        self.sampling_interval = sampling_interval
+        self.r = r
+        self.solution = solution
+        GuessEngine.__init__(self, name, selection_function, guess_range, solution)
+        self.output_parser_mode = "max"
+        self.logger.debug(
+            'Creating GraphTestEngine_Attack "%s" with %d guesses.', name, len(guess_range)
+        )
+
+    def _initialize(self):
+        self._samples_by_selection = np.zeros((self._number_of_guesses, 2,) + self._session.leakage_shape, np.double)
+        self._count_x = np.zeros((self._number_of_guesses, 2,), np.double)
+        self._test_results = np.zeros((self._number_of_guesses, 1), np.double)
+        self._batch_count = 0
+
+    def _update(self, batch):
+
+        for i in range(len(batch)):
+            y = np.array(
+                [self._function(batch.values[i], guess) for guess in self._guess_range]
+            )
+
+            idx_0 = np.where(y == 0)[0]
+            idx_1 = np.where(y == 1)[0]
+
+            self._samples_by_selection[idx_0, 0] = batch.leakages[i] if self._batch_count == 0 \
+                else np.concatenate((self._samples_by_selection[idx_0, 0], batch.leakages[i]), axis=0)
+            self._count_x[idx_0, 0] += 1
+
+            self._samples_by_selection[idx_1, 1] = batch.leakages[i] if self._batch_count == 0 \
+                else np.concatenate((self._samples_by_selection[idx_1, 1], batch.leakages[i]), axis=0)
+            self._count_x[idx_1, 1] += 1
+
+    def _finalize(self):
+        for guess in range(self._number_of_guesses):
+            p_value = -1
+            set_0, set_1 = self._samples_by_selection[guess][0], self._samples_by_selection[guess][1]
+            m_0, m_1 = self._count_x[guess][0], self._count_x[guess][1]
+
+            # convert 1-d time series into 2-d graphs by phase space reconstruction
+            init_graph_0 = Phase_Space_Reconstruction_Graph(set_0, self.time_delay, self.dim, self.sampling_interval)
+            init_graph_0.generate()
+            init_graph_1 = Phase_Space_Reconstruction_Graph(set_1, self.time_delay, self.dim, self.sampling_interval)
+            init_graph_1.generate()
+
+            # size of graph
+            self.number_of_nodes = init_graph_0.number_of_nodes
+
+            sample_size = (m_0 + m_1) // 2
+            if sample_size > self.number_of_nodes:
+                graph_samples_r = init_graph_0.adj_matrix
+                graph_samples_f = init_graph_1.adj_matrix
+                # graph_samples_f = np.ones(graph_samples_r.shape)
+                # it is a type of chi-square test statistic
+                mean_grdpg_r, mean_grdpg_f = np.mean(graph_samples_r, axis=0), np.mean(graph_samples_f, axis=0)
+                var_grdpg_r, var_grdpg_f = np.var(graph_samples_r, axis=0), np.var(graph_samples_f, axis=0)
+
+                nominator = 0
+                denominator = 0
+                for i in range(self.number_of_nodes):
+                    for j in range(self.number_of_nodes):
+                        if i < j:
+                            term1 = (mean_grdpg_r[i][j] - mean_grdpg_f[i][j]) ** 2
+                            term2 = (var_grdpg_r[i][j] / m_0 + var_grdpg_f[i][j] / m_1)
+                            if term1 != 0 and term2 == 0:
+                                p_value = 0
+                                break
+                            elif term2 == 0:
+                                continue
+                            nominator += term1
+                            denominator += term2
+                if p_value == -1:
+                    test_statistic = nominator / denominator
+                    test_statistic = np.nan_to_num(test_statistic)
+                    # Even though it evaluates the upper tail area, the chi-square test is regarded as a two-tailed test (non-directional)
+                    p_value = 1 - chi2.cdf(test_statistic, self.number_of_nodes * (self.number_of_nodes - 1) / 2)
+
+            elif 2 <= sample_size < self.number_of_nodes:
+                # proposed normality based test (Asymp-Normal)
+                # https://github.com/gdebarghya/Network-TwoSampleTesting/blob/master/codes/NormalityTest.m
+                graph_samples_r = init_graph_0.adj_matrix
+                graph_samples_f = init_graph_1.adj_matrix
+                m = floor(0.5 * min(m_0, m_1))
+                term1_1 = np.sum(graph_samples_r[:0, :, :] - graph_samples_f[:0, :, :], axis=0)
+                term1_2 = np.sum(graph_samples_r[0:, :, :] - graph_samples_f[0:, :, :], axis=0)
+                term2_1 = np.sum(graph_samples_r[:0, :, :] + graph_samples_f[:0, :, :], axis=0)
+                term2_2 = np.sum(graph_samples_r[0:, :, :] + graph_samples_f[0:, :, :], axis=0)
+                nominator = 0
+                denominator = 0
+                for i in range(self.number_of_nodes):
+                    for j in range(self.number_of_nodes):
+                        if i < j:
+                            nominator += term1_1[i][j] * term1_2[i][j]
+                            denominator += term2_1[i][j] * term2_2[i][j]
+                test_statistic = nominator / np.sqrt(denominator)
+                p_value = 2 * norm.cdf(-abs(test_statistic))
+
+            elif sample_size == 1:
+                # it is a type of Tracy-Widom test statistic
+                # rewrite based on https://github.com/gdebarghya/Network-TwoSampleTesting/blob/master/codes/TracyWidomTest.m
+                graph_samples_r = init_graph_0.adj_matrix[0]
+                graph_samples_f = init_graph_1.adj_matrix[0]
+                c = graph_samples_r - graph_samples_f
+                idx = self._spectral_clustering(graph_samples_r, graph_samples_f)
+                for i in range(self.r):
+                    for j in range(self.r):
+                        if i == j:
+                            temp = graph_samples_r[np.ix_(i == idx, j == idx)]
+                            # takes into account the diagonal is zero
+                            Pij = 0 if temp.shape[0] <= 1 else np.sum(temp) / (temp.shape[0] * temp.shape[0] - 1)
+                            temp = graph_samples_f[np.ix_(i == idx, j == idx)]
+                            Qij = 0 if temp.shape[0] <= 1 else np.sum(temp) / (temp.shape[0] * temp.shape[0] - 1)
+                            # continue
+                        else:
+                            temp = graph_samples_r[np.ix_(i == idx, j == idx)]
+                            Pij = np.mean(temp)
+                            temp = graph_samples_f[np.ix_(i == idx, j == idx)]
+                            Qij = np.mean(temp)
+                        denominator = np.sqrt((self.number_of_nodes - 1) * Pij * (1 - Pij) + Qij * (1 - Qij))
+                        if denominator == 0:
+                            denominator = 1e-5
+                        c[np.ix_(i == idx, j == idx)] = c[np.ix_(i == idx, j == idx)] / denominator
+                c = np.nan_to_num(c)
+                u, s, et = np.linalg.svd(c)
+                # using the largest singular value
+                test_statistic = self.number_of_nodes ** (2 / 3) * (s[0] - 2)
+                tw1_dist = TracyWidom(beta=1)
+                p_value = min(1, 2 * (1 - tw1_dist.cdf(test_statistic)))
+            self._test_results[guess] = p_value
+        return self._test_results
+
+    def _clean(self):
+        del self._samples_by_selection
+        del self._count_x
+        gc.collect()
+
+    def _spectral_clustering(self, a, b):
+        """
+        spectral clustering to find common block structure
+        a, b are two graphs, and r is a scalar (specifying number of communities)
+        """
+        c = (a + b) / 2
+        d = np.sum(c, axis=1)
+        d[d == 0] = 1
+        d = 1 / np.sqrt(d)
+        c = c * np.dot(d, d.T)
+        u, s, et = np.linalg.svd(c)
+        # using r largest dominant singular vectors
+        e = np.array(et[:self.r, :], ndmin=2).T
+        norm_e = np.array(np.sqrt(np.sum(e ** 2, axis=1)), ndmin=2).T
+        norm_e[norm_e == 0] = 1
+        e = e / norm_e
+        km = KMeans(n_clusters=self.r, random_state=0).fit(e)
+        return km.labels_
+
+
+
