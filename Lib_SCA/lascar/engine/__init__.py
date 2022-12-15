@@ -45,7 +45,8 @@ from .mi_engine import CMI_Engine_By_KDE
 from .success_rate_engine import numerical_success_rate
 from .graph_engine_basic import Phase_Space_Reconstruction_Graph, Generalised_RDPG
 from .graph_engine_direct_test import GraphTestEngine, GraphTestEngine_Attack
-from .graph_engine import GraphMIEngine, GraphDistanceEngine
+from .graph_engine_distance_test import GraphDistanceEngine
+from .graph_engine_mi_test import GraphMIEngine
 
 # from .template_engine import TemplateProfileEngine
 # from .template_engine import TemplateMatchEngine

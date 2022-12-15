@@ -182,7 +182,7 @@ class GraphTestEngine(PartitionerEngine):
 
 class GraphTestEngine_Attack(GuessEngine):
     """
-    attack version of GraphTestEngine, pls ref to the DpaEngine, where the LSB or MSB can be used
+    attack version of GraphTestEngine, pls ref to the DpaEngine, where the LSB can be used
     """
     def __init__(self, name, selection_function, guess_range, time_delay, dim, sampling_interval=1, r=3, solution=None):
         """

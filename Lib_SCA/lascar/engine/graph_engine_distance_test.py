@@ -1,9 +1,11 @@
 import gc
-
+from tqdm import tqdm
 import numpy as np
 from scipy.stats import ttest_ind, chisquare, chi2_contingency
 from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
 from statsmodels.stats.weightstats import ztest
+import networkx as nx
+import netcomp as nc
 
 
 from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph, Generalised_RDPG
@@ -48,7 +50,7 @@ class GraphDistanceEngine(PartitionerEngine):
 
     def _update(self, batch):
         partition_values = list(map(self._partition_function, batch.values))
-        for i, v in enumerate(partition_values):
+        for i, v in tqdm(enumerate(partition_values)):
             idx = self._partition_range_to_index[v]
             self._partition_count[idx] += 1
             one_leakage = np.array(batch.leakages[i], ndmin=2)
@@ -72,7 +74,7 @@ class GraphDistanceEngine(PartitionerEngine):
         grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix).generate()
 
         d0, d1 = np.zeros(self.sample_size), np.zeros(self.sample_size)
-        for i in range(self.sample_size):
+        for i in tqdm(range(self.sample_size)):
             grdpg_r1_sample = bernoulli.rvs(grdpg_r, size=(self.number_of_nodes, self.number_of_nodes))
             grdpg_r2_sample = bernoulli.rvs(grdpg_r, size=(self.number_of_nodes, self.number_of_nodes))
             grdpg_f_sample = bernoulli.rvs(grdpg_f, size=(self.number_of_nodes, self.number_of_nodes))

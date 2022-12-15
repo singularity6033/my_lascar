@@ -54,32 +54,6 @@ class Single_Result_OutputMethod(OutputMethod):
             self.batch_results.append(np.max(results, axis=1))
 
     def _finalize(self):
-        if isinstance(results, np.ndarray) and len(results.shape) == 1:
-            plt.plot(results)
-        elif isinstance(results, np.ndarray) and len(results.shape) == 2:
-            if engine.solution == -1:
-                plt.plot(results.T)
-            else:
-                # show the result of correct key guess
-                for i in range(results.shape[0]):
-                    if i != engine.solution:
-                        plt.plot(results[i, :], color='tab:gray')
-                plt.plot(results[engine.solution, :], color='red')
-
-        if self.output_path:
-            plot_path = os.sep.join([self.output_path, 'plots'])
-            if not os.path.exists(plot_path):
-                os.makedirs(plot_path)
-            plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
-            if self.contain_raw_file:
-                raw_file_path = os.sep.join([self.output_path, 'raw_data'])
-                if not os.path.exists(raw_file_path):
-                    os.makedirs(raw_file_path)
-                raw_data = pd.DataFrame(results)
-                writer = pd.ExcelWriter(os.sep.join([raw_file_path, 'data.xlsx']))
-                raw_data.to_excel(writer, self.filename, float_format='%.5f')  # 2nd param is sheet name
-                writer.close()
-
         if self.display:
             plt.show()
 

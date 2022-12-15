@@ -164,5 +164,5 @@ if __name__ == '__main__':
 
     # graph_based_mi(graph_test_config, fixed_random_traces)
     # graph_based_test(graph_test_config, fixed_random_traces)
-    graph_based_test_attack(graph_test_config, normal_simulated_traces)
-    # graph_based_distance(graph_test_config, fixed_random_traces)
+    # graph_based_test_attack(graph_test_config, normal_simulated_traces)
+    graph_based_distance(graph_test_config, fixed_random_traces)
