@@ -19,8 +19,8 @@ class GraphDistanceEngine(PartitionerEngine):
         "Metrics for graph comparison: a practitioner’s guide." Plos one 15.2 (2020): e0228728.
     """
 
-    def __init__(self, name, partition_function, time_delay, dim, sampling_interval=1, distance='edit_distance',
-                 sample_size=100):
+    def __init__(self, name, partition_function, time_delay, dim, sampling_interval=1, distance='resistance_distance',
+                 sample_size=25):
         """
         :param name:
         :param partition_function: partition_function that will take trace values as an input and returns 0 or 1

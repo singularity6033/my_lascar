@@ -18,10 +18,12 @@ cpa_config = {
     'attack_range': range(0, 4),
 
     # batch size
-    'batch_size': 1000,
+    'batch_size': 500,
 
     # plotting params
-    'figure_params': {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'}
+    'figure_params_along_time': {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'},
+    'figure_params_along_trace': {'title': 'cpa_result', 'x_label': 'trace_batch', 'y_label': 'correlation coefficient'}
+
 }
 
 """
