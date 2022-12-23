@@ -76,71 +76,52 @@ def graph_based_test_attack(params, trace_params):
         # LSB
         return sbox[value["plaintext"][ab][at] ^ guess] & 1
 
-    guess_range = range(5)
+    guess_range = range(256)
 
-    dpa_engine = GraphTestEngine_Attack(params['engine_name'],
-                                        selection_function,
-                                        guess_range,
-                                        time_delay=2,
-                                        dim=3)
-
+    graph_direct_test_engine = GraphTestEngine_Attack(params['engine_name'],
+                                                      selection_function,
+                                                      guess_range,
+                                                      time_delay=2,
+                                                      dim=3)
+    output_path = './results/graph_based_test_attack/' + trace_params['_id']
     session = Session(container,
-                      engine=dpa_engine,
+                      engine=graph_direct_test_engine,
                       output_method=NonIncrementalOutputMethod(
                           figure_params=params['figure_params'],
-                          output_path='./results/graph_based_test_attack'),
+                          output_path=output_path),
                       output_steps=params['batch_size'])
 
     session.run(batch_size=params['batch_size'])
 
-
-def graph_based_mi(params, trace_params):
-    if params['mode'] == 'fix_random':
-        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
-    elif params['mode'] == 'real':
-        pass
-
-    def partition_function(value):
-        # partition_function must take 1 argument: the value returned by the container at each trace
-        # fix and random sets have already been partitioned in container
-        return int(value["trace_idx"] % 2 != 0)
-
-    graph_test_engine = GraphMIEngine(params['engine_name'],
-                                      partition_function,
-                                      time_delay=2,
-                                      dim=3)
-    output_path = trace_params['_id']
-
-    # We choose here to plot the resulting curve
-    session = Session(container, engine=graph_test_engine)
-    session.run(batch_size=params['batch_size'])
+    del graph_direct_test_engine
+    del session
 
 
 if __name__ == '__main__':
-    # gt_params = graph_test_config
-    # trace_info = fixed_random_traces
-    # # json config file generation
-    # json_config = JSONConfig('graph_test_1')
-    # # 10k, 50k, 200k, 500k, 1000k
-    # for m_noise_sigma_el in [0, 0.5, 1]:
-    #     for shuffle_state in [True, False]:
-    #         for shift_state in [True, False]:
-    #             for m_masking_bytes in [0, 1]:
-    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #                 trace_info['shuffle'] = shuffle_state
-    #                 trace_info['shift'] = shift_state
-    #                 trace_info['number_of_masking_bytes'] = m_masking_bytes
-    #                 trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
-    #                                     '_#shuffle_' + str(shuffle_state) + '_#shift_' + str(shift_state)
-    #                 json_config.generate_config(trace_info)
-    # #
-    # # get json config file
-    # dict_list = json_config.get_config()
-    # for i, dict_i in tqdm(enumerate(dict_list)):
-    #     print('[INFO] Processing #', i)
-    #     graph_based_test(gt_params, dict_i)
-    #     # graph_based_mi(gt_params, dict_i)
+    gt_params = graph_test_attack_config
+    trace_info = normal_simulated_traces
+    # json config file generation
+    json_config = JSONConfig('graph_direct_test_attack')
+    # 10k, 50k, 200k, 500k, 1000k
+    # for m_number_of_traces in [5000, 10000]:
+    #     for m_noise_sigma_el in [0, 0.5, 1]:
+    #         for shuffle_state in [True, False]:
+    #             for shift_state in [True, False]:
+    #                 for m_masking_bytes in [0, 1]:
+    #                     trace_info['number_of_traces'] = m_number_of_traces
+    #                     trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                     trace_info['shuffle'] = shuffle_state
+    #                     trace_info['shift'] = shift_state
+    #                     trace_info['number_of_masking_bytes'] = m_masking_bytes
+    #                     trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
+    #                                         '_#shuffle_' + str(shuffle_state) + '_#shift_' + str(shift_state) + \
+    #                                         '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                     json_config.generate_config(trace_info)
 
-    # graph_based_mi(graph_test_config, fixed_random_traces)
-    # graph_based_test(graph_test_config, fixed_random_traces)
-    graph_based_test_attack(graph_test_attack_config, normal_simulated_traces)
+    # get json config file
+    dict_list = json_config.get_config()
+    for i, dict_i in tqdm(enumerate(dict_list[44:])):
+        print('[INFO] Processing #', i)
+        graph_based_test_attack(gt_params, dict_i)
+
+    # graph_based_test_attack(graph_test_attack_config, normal_simulated_traces)

@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 from scipy.stats import norm, bernoulli
 from PyAstronomy import pyaC
 
@@ -38,10 +39,9 @@ class Phase_Space_Reconstruction_Graph:
         self.to_unweighted = to_unweighted
 
         self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
-        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
-                                   dtype=np.float64)
-        max_dim = self.number_of_time_points // self.time_delay + 1
-        xxx = self._false_nearest_neighbor(self.time_series[0, :], self.time_delay, max_dim)
+        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes), dtype=np.float64)
+        # max_dim = self.number_of_time_points // self.time_delay + 1
+        # xxx = self._false_nearest_neighbor(self.time_series[0, :], self.time_delay, max_dim)
 
     @staticmethod
     def _calc_euclidean_distances(a, b):

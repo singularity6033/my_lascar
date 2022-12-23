@@ -31,7 +31,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                  num_bins=5,
                  hist_boundary=None,
                  num_shuffles=100,
-                 solution=None,
+                 solution=-1,
                  jit=True):
         """
         MiEngine
@@ -255,7 +255,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
             if not p_yx[xi]:
                 continue
             integrate_term = self._cal_integration_term(p_y, p_yx[xi], yx)
-            integrate_res = integrate.trapezoid(integrate_term, yx)
+            integrate_res = integrate_term if yx.shape[0] < 2 else integrate.trapezoid(integrate_term, yx)
             cmi += p_x_dist.pdf(xi) * integrate_res
         return cmi
 
@@ -267,16 +267,6 @@ class CMI_Engine_By_Histogram(GuessEngine):
         3. we assume the distribution of input secret x (hamming) is known as a binomial distribution with n=8, p=0.5
         """
         print('[INFO] Batch #', self._batch_count + 1)
-        print(tracemalloc.get_traced_memory())
-        snapshot = tracemalloc.take_snapshot()
-        for stat in snapshot.statistics('lineno')[:10]:
-            print(stat)
-        # print(getsizeof(self._mutual_information))
-        # print(getsizeof(self._p_value))
-        # print(getsizeof(self.pdfs_for_pyx))
-        # print(getsizeof(self.y_x))
-        # print(getsizeof(self.pdfs_for_px))
-        # print(getsizeof(self.pdfs_for_py))
         secret_x = self._mapfunction(self._guess_range, batch.values)  # batch_size * guess_range
         # store the total secret x
         # self.secret_x = secret_x if not isinstance(self.secret_x, np.ndarray) else np.concatenate(
@@ -288,7 +278,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
         #     (self.y_total, batch_leakages), axis=0)
         # estimate the histogram of p_y for current batch
         for i in range(self.number_of_time_samples):
-            y = np.array(batch_leakages[:, i], ndmin=2).T
+            y = batch_leakages[:, i]
             self._histogram_estimation_py(y, i)
 
         print('[INFO] Processing pdfs estimation...')
@@ -342,7 +332,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
                         1 - norm.cdf(real_cmi, loc=m, scale=v))
                 self._p_value[i][j] = p_value
         results = (self._mutual_information, self._p_value)
-        self._clean()
+        # self._clean()
         return results
 
     def _clean(self):

@@ -18,7 +18,7 @@ from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import cmi_config
 from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import Multiple_Results_OutputMethod
+from Lib_SCA.lascar import MultipleMatrixPlotsOutputMethod
 from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session, MatPlotLibOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 import tracemalloc
@@ -51,8 +51,11 @@ def continuous_mutual_information(params, trace_params):
     def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
         return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
 
-    num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, container.number_of_masking_bytes)  # or 0 ('auto')
-    hist_boundary = [0, num_bins]  # or None
+    if not container.masking:
+        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, 0)
+    else:
+        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, container.number_of_masking_bytes)  # or 0 ('auto')
+    hist_boundary = [0, num_bins-1]  # or None
 
     mi_engine = CMI_Engine_By_Histogram(params['engine_name'],
                                         selection_function,
@@ -61,13 +64,16 @@ def continuous_mutual_information(params, trace_params):
                                         hist_boundary=hist_boundary,
                                         num_shuffles=params['num_shuffles'],
                                         solution=params['idx_of_correct_key_guess'])
-
-    output_path = './plots/cmi_results/' + trace_params['_id'] + '.png'
+    # trace_params['_id']
+    output_path = './plots/cmi_results_test/' + 'yzs'
     session = Session(container,
                       engine=mi_engine,
-                      output_method=Multiple_Results_OutputMethod(figure_params=params['figure_params'],
-                                                                  output_path=output_path,
-                                                                  display=False))
+                      output_method=MultipleMatrixPlotsOutputMethod(figure_params_along_time=params['figure_params_along_time'],
+                                                                    figure_params_along_trace=params['figure_params_along_trace'],
+                                                                    output_path=output_path,
+                                                                    display=False),
+                      # output_steps=params['batch_size']
+                      )
     session.run(batch_size=params['batch_size'])
 
     del container
@@ -79,31 +85,32 @@ def continuous_mutual_information(params, trace_params):
 if __name__ == '__main__':
     cmi_params = cmi_config
     trace_info = normal_simulated_traces
-    # json config file generation
-    json_config = JSONConfig('cmi_test_1')
-    tracemalloc.start()
-    # 10k, 50k, 200k, 500k, 1000k
-    for m_number_of_traces in [500000, 10000000]:
-        for m_number_of_bytes in range(1, 17):
-            for m_noise_sigma_el in [0, 0.25, 0.5]:
-                for m_num_of_masking_bytes in [0, 1, 2]:
-                    m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
-                    trace_info['number_of_traces'] = m_number_of_traces
-                    trace_info['number_of_bytes'] = m_number_of_bytes
-                    trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
-                    trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
-                    trace_info['noise_sigma_el'] = m_noise_sigma_el
-                    trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
-                                        '_el_' + str(trace_info['noise_sigma_el']) + \
-                                        '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
-                                        '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                    json_config.generate_config(trace_info)
-
-    # get json config file
-    dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list[1:])):
-        print('[INFO] Processing #', i)
-        continuous_mutual_information(cmi_params, dict_i)
+    # # json config file generation
+    # json_config = JSONConfig('cmi_test_1')
+    # tracemalloc.start()
+    # # 10k, 50k, 200k, 500k, 1000k
+    # for m_number_of_traces in [500000, 10000000]:
+    #     for m_number_of_bytes in range(1, 17):
+    #         for m_noise_sigma_el in [0, 0.25, 0.5]:
+    #             for m_num_of_masking_bytes in [0, 1, 2]:
+    #                 m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
+    #                 trace_info['number_of_traces'] = m_number_of_traces
+    #                 trace_info['number_of_bytes'] = m_number_of_bytes
+    #                 trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
+    #                 trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
+    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                 trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
+    #                                     '_el_' + str(trace_info['noise_sigma_el']) + \
+    #                                     '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
+    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                 json_config.generate_config(trace_info)
+    #
+    # # get json config file
+    # dict_list = json_config.get_config()
+    # for i, dict_i in tqdm(enumerate(dict_list[1:])):
+    #     print('[INFO] Processing #', i)
+    #     continuous_mutual_information(cmi_params, dict_i)
+    continuous_mutual_information(cmi_params, trace_info)
 
     # from pathlib import Path
     #

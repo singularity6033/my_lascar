@@ -12,8 +12,10 @@ from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.evaluation_configs import t_test_config
 from Lib_SCA.configs.simulation_configs import fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import Single_Result_OutputMethod
+from Lib_SCA.lascar import SingleVectorPlotOutputMethod
 from Lib_SCA.lascar import Session, TTestEngine
+
+
 # from real_traces_generator import real_trace_generator
 
 
@@ -32,8 +34,11 @@ def tt_test(params, trace_params):
     # We choose here to plot the resulting curve
     session = Session(container,
                       engine=ttest_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
-                                                               output_path=''))
+                      output_method=SingleVectorPlotOutputMethod(
+                          figure_params_along_time=params['figure_params_along_time'],
+                          figure_params_along_trace=params['figure_params_along_trace'],
+                          output_path='./results/t-test'),
+                      output_steps=params['batch_size'])
     session.run(batch_size=params['batch_size'])
 
     # comparison with Scipy built-in function

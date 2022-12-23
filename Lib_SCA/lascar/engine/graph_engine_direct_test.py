@@ -1,6 +1,6 @@
 import gc
 from math import floor
-
+from tqdm import tqdm
 import numpy as np
 from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
 from sklearn.cluster import KMeans
@@ -31,6 +31,7 @@ class GraphTestEngine(PartitionerEngine):
         self.dim = dim
         self.sampling_interval = sampling_interval
         self.r = r
+
         PartitionerEngine.__init__(self, name, partition_function, range(2), None)
         self.logger.debug('Creating GraphTestEngine  "%s". ' % name)
 
@@ -184,7 +185,7 @@ class GraphTestEngine_Attack(GuessEngine):
     """
     attack version of GraphTestEngine, pls ref to the DpaEngine, where the LSB can be used
     """
-    def __init__(self, name, selection_function, guess_range, time_delay, dim, sampling_interval=1, r=3, solution=None):
+    def __init__(self, name, selection_function, guess_range, time_delay, dim, sampling_interval=1, r=3, solution=-1):
         """
         :param name:
         :param param selection_function: takes a value and a guess_guess as input, returns 0 or 1.
@@ -208,13 +209,11 @@ class GraphTestEngine_Attack(GuessEngine):
         )
 
     def _initialize(self):
-        self._samples_by_selection = np.zeros((self._number_of_guesses, 2,) + self._session.leakage_shape, np.double)
+        self._samples_by_selection = [[None] * 2 for _ in range(self._number_of_guesses)]
         self._count_x = np.zeros((self._number_of_guesses, 2,), np.double)
-        self._test_results = np.zeros((self._number_of_guesses, 1), np.double)
-        self._batch_count = 0
+        self._test_results = np.zeros((1, self._number_of_guesses), np.double)
 
     def _update(self, batch):
-
         for i in range(len(batch)):
             y = np.array(
                 [self._function(batch.values[i], guess) for guess in self._guess_range]
@@ -223,19 +222,23 @@ class GraphTestEngine_Attack(GuessEngine):
             idx_0 = np.where(y == 0)[0]
             idx_1 = np.where(y == 1)[0]
 
-            self._samples_by_selection[idx_0, 0] = batch.leakages[i] if self._batch_count == 0 \
-                else np.concatenate((self._samples_by_selection[idx_0, 0], batch.leakages[i]), axis=0)
+            leakage = np.array(batch.leakages[i], ndmin=2)
+            for idx_0_i in idx_0:
+                self._samples_by_selection[idx_0_i][0] = leakage if not isinstance(self._samples_by_selection[idx_0_i][0], np.ndarray) \
+                    else np.concatenate((self._samples_by_selection[idx_0_i][0], leakage), axis=0)
             self._count_x[idx_0, 0] += 1
 
-            self._samples_by_selection[idx_1, 1] = batch.leakages[i] if self._batch_count == 0 \
-                else np.concatenate((self._samples_by_selection[idx_1, 1], batch.leakages[i]), axis=0)
+            for idx_1_i in idx_1:
+                self._samples_by_selection[idx_1_i][1] = leakage if not isinstance(self._samples_by_selection[idx_1_i][1], np.ndarray) \
+                    else np.concatenate((self._samples_by_selection[idx_1_i][1], leakage), axis=0)
             self._count_x[idx_1, 1] += 1
 
     def _finalize(self):
-        for guess in range(self._number_of_guesses):
+        for guess in tqdm(range(self._number_of_guesses)):
             p_value = -1
+
             set_0, set_1 = self._samples_by_selection[guess][0], self._samples_by_selection[guess][1]
-            m_0, m_1 = self._count_x[guess][0], self._count_x[guess][1]
+            m_0, m_1 = self._count_x[guess, 0], self._count_x[guess, 1]
 
             # convert 1-d time series into 2-d graphs by phase space reconstruction
             init_graph_0 = Phase_Space_Reconstruction_Graph(set_0, self.time_delay, self.dim, self.sampling_interval)
@@ -270,7 +273,7 @@ class GraphTestEngine_Attack(GuessEngine):
                             nominator += term1
                             denominator += term2
                 if p_value == -1:
-                    test_statistic = nominator / denominator
+                    test_statistic = nominator / denominator if denominator else 1
                     test_statistic = np.nan_to_num(test_statistic)
                     # Even though it evaluates the upper tail area, the chi-square test is regarded as a two-tailed test (non-directional)
                     p_value = 1 - chi2.cdf(test_statistic, self.number_of_nodes * (self.number_of_nodes - 1) / 2)
@@ -326,7 +329,7 @@ class GraphTestEngine_Attack(GuessEngine):
                 test_statistic = self.number_of_nodes ** (2 / 3) * (s[0] - 2)
                 tw1_dist = TracyWidom(beta=1)
                 p_value = min(1, 2 * (1 - tw1_dist.cdf(test_statistic)))
-            self._test_results[guess] = p_value
+            self._test_results[0, guess] = p_value
         return self._test_results
 
     def _clean(self):

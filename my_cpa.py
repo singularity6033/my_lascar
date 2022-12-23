@@ -16,8 +16,10 @@ from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.attack_configs import cpa_config
 from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import CpaEngine, hamming, Session, Single_Result_OutputMethod, numerical_success_rate
+from Lib_SCA.lascar import CpaEngine, hamming, Session, SingleMatrixPlotOutputMethod, numerical_success_rate
 from Lib_SCA.lascar.tools.aes import sbox
+
+
 # from real_traces_generator import real_trace_generator
 
 
@@ -54,11 +56,12 @@ def cpa_attack(params, trace_params):
         os.makedirs(output_path)
     session = Session(container,
                       engine=cpa_engine,
-                      output_method=Single_Result_OutputMethod(figure_params_along_time=params['figure_params_along_time'],
-                                                               figure_params_along_trace=params['figure_params_along_trace'],
-                                                               output_path=output_path,
-                                                               filename='cpa',
-                                                               contain_raw_file=True),
+                      output_method=SingleMatrixPlotOutputMethod(
+                          figure_params_along_time=params['figure_params_along_time'],
+                          figure_params_along_trace=params['figure_params_along_trace'],
+                          output_path=output_path,
+                          filename='cpa',
+                          contain_raw_file=True),
                       output_steps=params['batch_size'])
 
     session.run(batch_size=params['batch_size'])

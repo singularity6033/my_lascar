@@ -75,8 +75,8 @@ class JSONConfig:
         input a list of dicts
         """
         path = self.CONFIG_PATH + self.config_name + '.json'
-        if os.path.isfile(path):
-            os.remove(path)
+        # if os.path.isfile(path):
+        #     os.remove(path)
         with open(path, 'a') as f:
             json.dump(dictionary, f)
             f.write("\n")

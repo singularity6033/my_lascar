@@ -7,7 +7,6 @@ from statsmodels.stats.weightstats import ztest
 import networkx as nx
 import netcomp as nc
 
-
 from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph, Generalised_RDPG
 
 
@@ -19,7 +18,14 @@ class GraphDistanceEngine(PartitionerEngine):
         "Metrics for graph comparison: a practitioner’s guide." Plos one 15.2 (2020): e0228728.
     """
 
-    def __init__(self, name, partition_function, time_delay, dim, sampling_interval=1, distance='resistance_distance',
+    def __init__(self,
+                 name,
+                 partition_function,
+                 time_delay,
+                 dim,
+                 sampling_interval=1,
+                 distance_type='deltacon0',
+                 test_type='z-test',
                  sample_size=25):
         """
         :param name:
@@ -27,15 +33,17 @@ class GraphDistanceEngine(PartitionerEngine):
         :param time_delay: delayed time interval used in phase space reconstruction
         :param dim: the dimension of embedding delayed time series (vectors)
         :param sampling_interval: used to sample the delayed time series, default is 1
-        :param distance: 'edit_distance', 'vertex_edge_overlap', 'vertex_edge_distance', 'lambda_dist', 'netsimile',
+        :param distance_type: 'edit_distance', 'vertex_edge_overlap', 'vertex_edge_distance', 'lambda_dist', 'netsimile',
         'resistance_distance', 'deltacon0'
+        :param test_type: 'z-test', 't-test', 'chi-test', 'ks_2samp', 'cramervonmises_2samp'
         see in https://github.com/peterewills/NetComp/blob/master/netcomp/distance/exact.py
         :param sample_size: number of samples drawn from each graph population
         """
         self.time_delay = time_delay
         self.dim = dim
         self.sampling_interval = sampling_interval
-        self.distance = distance
+        self.distance_type = distance_type
+        self.test_type = test_type
         self.sample_size = sample_size
         PartitionerEngine.__init__(self, name, partition_function, range(2), None)
         self.logger.debug('Creating GraphTestEngine  "%s". ' % name)
@@ -70,39 +78,42 @@ class GraphDistanceEngine(PartitionerEngine):
 
         self.number_of_nodes = init_graph_r.number_of_nodes
 
-        grdpg_r = Generalised_RDPG(init_graph_r.adj_matrix).generate()
-        grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix).generate()
+        # form a rdpg (distribution)
+        # grdpg_r = Generalised_RDPG(init_graph_r.adj_matrix).generate()
+        # grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix).generate()\
+        random_sample = init_graph_f.adj_matrix
+        fixed_sample = init_graph_f.adj_matrix
+        random_sample_copy = np.copy(random_sample)
+        np.random.shuffle(random_sample_copy)
+
+        self.sample_size = min(m_r, m_f)
 
         d0, d1 = np.zeros(self.sample_size), np.zeros(self.sample_size)
         for i in tqdm(range(self.sample_size)):
-            grdpg_r1_sample = bernoulli.rvs(grdpg_r, size=(self.number_of_nodes, self.number_of_nodes))
-            grdpg_r2_sample = bernoulli.rvs(grdpg_r, size=(self.number_of_nodes, self.number_of_nodes))
-            grdpg_f_sample = bernoulli.rvs(grdpg_f, size=(self.number_of_nodes, self.number_of_nodes))
-            d0[i] = eval('nc.' + self.distance)(grdpg_r1_sample, grdpg_r2_sample)
-            d1[i] = eval('nc.' + self.distance)(grdpg_r1_sample, grdpg_f_sample)
+            d0[i] = eval('nc.' + self.distance_type)(random_sample[i], random_sample_copy[i])
+            d1[i] = eval('nc.' + self.distance_type)(random_sample[i], fixed_sample[i])
 
         # m0, sigma0 = np.mean(d0), np.std(d0)
         # distance_contrast = (d1 - m0) / sigma0
         # ref = (d0 - m0) / sigma0
+        p_value = -1.0
+        if self.test_type == 'z-test':
+            z_score, p_value_z = ztest(d0, d1, value=0)
+            p_value = p_value_z
+        elif self.test_type == 't-test':
+            t_score, p_value_t = ttest_ind(d0, d1)
+            p_value = p_value_t
+        elif self.test_type == 'chi-test':
+            chi_score = np.sum((d0 - d1) / d1)
+            p_value = 1 - chi2.cdf(chi_score, df=(self.sample_size - 1) * (self.sample_size - 1))
+        elif self.test_type == 'ks_2samp':
+            ks2_score, p_value_ks2 = ks_2samp(d0, d1)
+            p_value = p_value_ks2
+        elif self.test_type == 'cramervonmises_2samp':
+            cm2_score, p_value_cm2 = cramervonmises_2samp(d0, d1).statistic, cramervonmises_2samp(d0, d1).pvalue
+            p_value = p_value_cm2
 
-        # define a z-test
-        z_score, p_value_z = ztest(d0, d1, value=0)
-        t_score, p_value_t = ttest_ind(d0, d1)
-        # chi_score, p_value_chi = chisquare(d0 / np.sum(d0), d1 / np.sum(d1), ddof=0)
-        chi2_samples = np.array([d0, d1]).T
-        chi_score = np.sum((d0 - d1) / d1)
-        # chi_score, p_value_chi = chi2_contingency(chi2_samples)[0], chi2_contingency(chi2_samples)[1]
-        p_value_chi = 1 - chi2.cdf(chi_score, df=(self.sample_size - 1) * (self.sample_size - 1))
-        ks2_score, p_value_ks2 = ks_2samp(d0, d1)
-        cm2_score, p_value_cm2 = cramervonmises_2samp(d0, d1).statistic, cramervonmises_2samp(d0, d1).pvalue
-
-        # graph_samples_r = init_graph_r.adj_matrix
-        # graph_samples_f = init_graph_f.adj_matrix
-        print(z_score, p_value_z)
-        print(t_score, p_value_t)
-        print(chi_score, 1 - p_value_chi)
-        print(ks2_score, p_value_ks2)
-        print(cm2_score, p_value_cm2)
+        return p_value
 
     def _clean(self):
         del self._samples_by_partition

@@ -1,6 +1,7 @@
 from math import inf
 
 import numpy as np
+import pandas as pd
 import sklearn.feature_selection as fs
 from PyAstronomy import pyaC
 from scipy import integrate
@@ -54,12 +55,20 @@ import matplotlib.pyplot as plt
 x = np.arange(2.)**2
 y = np.sin(x)
 
+a = np.random.randint(0, 5, (1, 10))
+b = np.random.randint(0, 5, (1, 10))
+c = np.concatenate((a, b), axis=0)
+xx = np.arange(11, 21)
+plt.plot(xx, a.T)
+plt.xticks(xx, ['a'] * 10)
+plt.show()
 # Get coordinates and indices of zero crossings
 # xc, xi = pyaC.zerocross1d(x, y, getIndices=True)
 # fig, axs = [None] * 2, [None] * 2
 # fig[0], axs[0] = plt.subplots(1, 2, figsize=(16, 6))
 # fig[1], axs[1] = plt.subplots(1, 2, figsize=(16, 6))
-xx = np.array((1))
+# xx = np.array((1))
+# yy = pd.DataFrame([1])
 # a = np.random.randint(0, 5, (2, 2, 2))
 # b = np.random.randint(0, 5, (5, 5))
 # print(b[1:2, 4])
