@@ -76,19 +76,20 @@ def graph_based_test_attack(params, trace_params):
         # LSB
         return sbox[value["plaintext"][ab][at] ^ guess] & 1
 
-    guess_range = range(5)
+    guess_range = range(params['no_of_key_guesses'])
 
     dpa_engine = GraphTestEngine_Attack(params['engine_name'],
                                         selection_function,
                                         guess_range,
                                         time_delay=2,
-                                        dim=3)
+                                        dim=3,
+                                        solution=params['idx_of_correct_key_guess'])
 
     session = Session(container,
                       engine=dpa_engine,
                       output_method=NonIncrementalOutputMethod(
                           figure_params=params['figure_params'],
-                          output_path='./results/graph_based_test_attack'),
+                          output_path='./results/graph_based_test_attack1'),
                       output_steps=params['batch_size'])
 
     session.run(batch_size=params['batch_size'])

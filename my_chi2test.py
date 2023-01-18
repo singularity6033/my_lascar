@@ -5,17 +5,18 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
-from Lib_SCA.configs.evaluation_configs import t_test_config
+from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
+from Lib_SCA.configs.evaluation_configs import chi2_test_config
 from Lib_SCA.configs.simulation_configs import fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import SingleVectorPlotOutputMethod
-from Lib_SCA.lascar import Session, TTestEngine
+from Lib_SCA.lascar import Session, Chi2TestEngine
 
 
 # from real_traces_generator import real_trace_generator
 
 
-def tt_test(params, trace_params):
+def chi2_test(params, trace_params):
     container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
@@ -25,29 +26,30 @@ def tt_test(params, trace_params):
         # fix and random sets have already been partitioned in container
         return int(value["trace_idx"] % 2 == 0)
 
-    ttest_engine = TTestEngine(params['engine_name'], partition_function)
+    def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
+        return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
+
+    if not container.masking:
+        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, 0)
+    else:
+        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, container.number_of_masking_bytes)  # or 0 ('auto')
+    hist_boundary = [0, num_bins-1]
+
+    chi2test_engine = Chi2TestEngine(params['engine_name'],
+                                     partition_function,
+                                     n_bins=num_bins,
+                                     bin_range=hist_boundary)
 
     # We choose here to plot the resulting curve
     session = Session(container,
-                      engine=ttest_engine,
+                      engine=chi2test_engine,
                       output_method=SingleVectorPlotOutputMethod(
                           figure_params_along_time=params['figure_params_along_time'],
                           figure_params_along_trace=params['figure_params_along_trace'],
-                          output_path='./results/t-test'),
+                          output_path='./results/chi2-test'),
                       output_steps=params['batch_size'])
     session.run(batch_size=params['batch_size'])
 
-    # comparison with Scipy built-in function
-    # results = ttest_engine.finalize()
-    # plt.figure(1)
-    # plt.plot(results.T)
-    # equal_var = len(container) % 2 == 0
-    # real_leakages = container[:len(container)].leakages
-    # results_v = ttest_ind(real_leakages[1::2], real_leakages[::2], axis=0, equal_var=equal_var).statistic
-    # plt.plot(results_v, 'o')
-    # plt.legend(['from lascar', 'from scipy'])
-    # plt.show()
-
 
 if __name__ == '__main__':
-    tt_test(t_test_config, fixed_random_traces)
+    chi2_test(chi2_test_config, fixed_random_traces)

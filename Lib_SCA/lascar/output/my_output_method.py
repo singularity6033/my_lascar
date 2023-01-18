@@ -42,9 +42,12 @@ class SingleMatrixPlotOutputMethod(OutputMethod):
 
         self.along_time_results = None
         self.along_trace_results = None
+        self.along_trace_ticks = []
 
     def _update(self, engine, results):
         self.engine = engine
+        self.along_trace_ticks.append(self.engine._number_of_processed_traces)
+
         if isinstance(results, np.ndarray) and len(results.shape) == 2:
             self.along_time_results = results
             optima = np.array(np.max(results, axis=1), ndmin=2).T
@@ -66,7 +69,7 @@ class SingleMatrixPlotOutputMethod(OutputMethod):
             plt.figure(0)
             plt.plot(self.along_time_results.T)
             plt.figure(1)
-            plt.plot(self.along_trace_results.T)
+            plt.plot(self.along_trace_ticks, self.along_trace_results.T)
         else:
             # show the result of correct key guess
             for i in range(self.along_time_results.shape[0]):
@@ -74,11 +77,11 @@ class SingleMatrixPlotOutputMethod(OutputMethod):
                     plt.figure(0)
                     plt.plot(self.along_time_results[i, :], color='tab:gray')
                     plt.figure(1)
-                    plt.plot(self.along_trace_results[i, :], color='tab:gray')
+                    plt.plot(self.along_trace_ticks, self.along_trace_results[i, :], color='tab:gray')
             plt.figure(0)
             plt.plot(self.along_time_results[self.engine.solution, :], color='red')
             plt.figure(1)
-            plt.plot(self.along_trace_results[self.engine.solution, :], color='red')
+            plt.plot(self.along_trace_ticks, self.along_trace_results[self.engine.solution, :], color='red')
 
         if self.output_path:
             plot_path1 = os.sep.join([self.output_path, 'along_time', 'plot'])
@@ -147,9 +150,12 @@ class SingleVectorPlotOutputMethod(OutputMethod):
 
         self.along_time_results = None
         self.along_trace_results = []
+        self.along_trace_ticks = []
 
     def _update(self, engine, results):
         self.engine = engine
+        self.along_trace_ticks.append(self.engine._number_of_processed_traces)
+
         if isinstance(results, np.ndarray) and len(results.shape) == 1:
             self.along_time_results = results
             self.along_trace_results.append(np.min(results))
@@ -168,7 +174,7 @@ class SingleVectorPlotOutputMethod(OutputMethod):
         plt.figure(0)
         plt.plot(self.along_time_results.T)
         plt.figure(1)
-        plt.plot(self.along_trace_results)
+        plt.plot(self.along_trace_ticks, self.along_trace_results)
 
         if self.output_path:
             plot_path1 = os.sep.join([self.output_path, 'along_time', 'plot'])
@@ -239,10 +245,7 @@ class SingleOnePlotOutputMethod(OutputMethod):
 
     def _update(self, engine, results):
         self.engine = engine
-        if not self.along_trace_ticks:
-            self.along_trace_ticks.append(self.engine._number_of_processed_traces)
-        else:
-            self.along_trace_ticks.append(self.along_trace_ticks[-1] + self.engine._number_of_processed_traces)
+        self.along_trace_ticks.append(self.engine._number_of_processed_traces)
 
         if isinstance(results, float):
             self.one_result = results
@@ -253,8 +256,7 @@ class SingleOnePlotOutputMethod(OutputMethod):
         plt.xlabel(self.figure_params['x_label'])
         plt.ylabel(self.figure_params['y_label'])
 
-        plt.plot(self.along_trace_results)
-        plt.xticks(np.arange(len(self.along_trace_results)), self.along_trace_ticks)
+        plt.plot(self.along_trace_ticks, self.along_trace_results)
 
         if self.output_path:
             plot_path = os.sep.join([self.output_path, 'along_trace', 'plot'])
@@ -412,10 +414,17 @@ class NonIncrementalOutputMethod(OutputMethod):
             self.results = results
 
     def _finalize(self):
-
+        plt.clf()
         plt.figure(0)
-        plt.plot(self.results.T)
-        plt.xticks(np.arange(self.results.shape[1]), np.arange(self.results.shape[1]))
+        plt.title(self.figure_params['title'])
+        plt.xlabel(self.figure_params['x_label'])
+        plt.ylabel(self.figure_params['y_label'])
+
+        x = np.arange(self.results.shape[1])
+        plt.plot(x, self.results.T)
+        if self.engine.solution != -1:
+            plt.plot(self.engine.solution, self.results.T[self.engine.solution], 'kx')
+            plt.axhline(y=self.results.T[self.engine.solution], color='r', linestyle='--')
 
         if self.output_path:
             plot_path = os.sep.join([self.output_path, 'plot'])

@@ -51,7 +51,7 @@ def cpa_attack(params, trace_params):
                            guess_range,
                            solution=params['idx_of_correct_key_guess'])
 
-    output_path = 'results/cpa_test'
+    output_path = 'results/cpa'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     session = Session(container,

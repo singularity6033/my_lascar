@@ -1,14 +1,16 @@
+import os
+
 from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
 from Lib_SCA.configs.attack_configs import dpa_config
 from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import Single_Result_OutputMethod
+from Lib_SCA.lascar import SingleMatrixPlotOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
 from Lib_SCA.lascar import Session
 import matplotlib.pyplot as plt
 
-from real_traces_generator import real_trace_generator
+# from real_traces_generator import real_trace_generator
 
 
 def dpa_attack(params, trace_params):
@@ -17,8 +19,8 @@ def dpa_attack(params, trace_params):
         container = SimulatedPowerTraceContainer(config_params=trace_params)
     elif params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
-    elif params['mode'] == 'real':
-        container = real_trace_generator()
+    # elif params['mode'] == 'real':
+    #     container = real_trace_generator()
 
     attack_byte = container.idx_exp[0]
     attack_time = container.attack_sample_point
@@ -45,10 +47,19 @@ def dpa_attack(params, trace_params):
                            guess_range,
                            solution=params['idx_of_correct_key_guess'])
 
+    output_path = 'results/dpa'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     session = Session(container,
                       engine=dpa_engine,
-                      output_method=Single_Result_OutputMethod(figure_params=params['figure_params'],
-                                                               output_path='./plots/dpa.png'))
+                      output_method=SingleMatrixPlotOutputMethod(
+                          figure_params_along_time=params['figure_params_along_time'],
+                          figure_params_along_trace=params['figure_params_along_trace'],
+                          output_path=output_path,
+                          filename='dpa',
+                          contain_raw_file=True),
+                      output_steps=params['batch_size'])
 
     session.run(batch_size=params['batch_size'])
 

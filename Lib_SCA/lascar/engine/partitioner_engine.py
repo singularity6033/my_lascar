@@ -64,7 +64,7 @@ class PartitionerEngine(Engine):
         :param order: the order needed by the engine ( order=1: sum of leakages, order=2: sum of square of leakages,...)
 
         """
-
+        Engine.__init__(self, name)
         if isinstance(partition_range, int):
             self._partition_range = range(partition_range)
         else:
@@ -89,7 +89,6 @@ class PartitionerEngine(Engine):
             self._partition_function = jit(nopython=True)(partition_function)
         else:
             self._partition_function = partition_function
-        Engine.__init__(self, name)
 
     def _initialize(self):
 

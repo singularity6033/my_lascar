@@ -18,7 +18,7 @@ cpa_config = {
     'attack_range': range(0, 4),
 
     # batch size
-    'batch_size': 500,
+    'batch_size': 5000,
 
     # plotting params
     'figure_params_along_time': {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'},
@@ -46,8 +46,10 @@ dpa_config = {
     'attack_range': range(0, 4),
 
     # batch size
-    'batch_size': 1000,
+    'batch_size': 5000,
 
     # plotting params
-    'figure_params': {'title': 'dpa_result', 'x_label': 'time', 'y_label': 'dom'}
+    # plotting params
+    'figure_params_along_time': {'title': 'dpa_result', 'x_label': 'time', 'y_label': 'dom'},
+    'figure_params_along_trace': {'title': 'dpa_result', 'x_label': 'trace_no', 'y_label': 'dom'}
 }

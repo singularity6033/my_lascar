@@ -76,13 +76,14 @@ def graph_based_test_attack(params, trace_params):
         # LSB
         return sbox[value["plaintext"][ab][at] ^ guess] & 1
 
-    guess_range = range(256)
+    guess_range = range(params['no_of_key_guesses'])
 
     graph_direct_test_engine = GraphTestEngine_Attack(params['engine_name'],
                                                       selection_function,
                                                       guess_range,
                                                       time_delay=2,
-                                                      dim=3)
+                                                      dim=3,
+                                                      solution=params['idx_of_correct_key_guess'])
     output_path = './results/graph_based_test_attack/' + trace_params['_id']
     session = Session(container,
                       engine=graph_direct_test_engine,
@@ -101,26 +102,26 @@ if __name__ == '__main__':
     gt_params = graph_test_attack_config
     trace_info = normal_simulated_traces
     # json config file generation
-    json_config = JSONConfig('graph_direct_test_attack')
+    json_config = JSONConfig('graph_direct_test_attack_v2')
     # 10k, 50k, 200k, 500k, 1000k
-    # for m_number_of_traces in [5000, 10000]:
-    #     for m_noise_sigma_el in [0, 0.5, 1]:
-    #         for shuffle_state in [True, False]:
-    #             for shift_state in [True, False]:
-    #                 for m_masking_bytes in [0, 1]:
-    #                     trace_info['number_of_traces'] = m_number_of_traces
-    #                     trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #                     trace_info['shuffle'] = shuffle_state
-    #                     trace_info['shift'] = shift_state
-    #                     trace_info['number_of_masking_bytes'] = m_masking_bytes
-    #                     trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
-    #                                         '_#shuffle_' + str(shuffle_state) + '_#shift_' + str(shift_state) + \
-    #                                         '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-    #                     json_config.generate_config(trace_info)
+    for m_number_of_traces in [50000]:
+        for m_noise_sigma_el in [0.5]:
+            for shuffle_state in [True, False]:
+                for shift_state in [True, False]:
+                    for m_masking_bytes in [1]:
+                        trace_info['number_of_traces'] = m_number_of_traces
+                        trace_info['noise_sigma_el'] = m_noise_sigma_el
+                        trace_info['shuffle'] = shuffle_state
+                        trace_info['shift'] = shift_state
+                        trace_info['number_of_masking_bytes'] = m_masking_bytes
+                        trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
+                                            '_#shuffle_' + str(shuffle_state) + '_#shift_' + str(shift_state) + \
+                                            '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+                        json_config.generate_config(trace_info)
 
     # get json config file
     dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list[44:])):
+    for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
         graph_based_test_attack(gt_params, dict_i)
 

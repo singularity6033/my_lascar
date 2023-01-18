@@ -443,7 +443,8 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 for i in range(self.number_of_bytes):
                     sbox_output = sbox[tmp[i]]
                     tmp[i] = self.leakage_model(sbox_output)
-                value["leakage_model_output"] = tmp.repeat(self.number_of_time_samples, axis=1)
+                # generate a fixed trace along all time samples
+                # value["leakage_model_output"] = tmp.repeat(self.number_of_time_samples, axis=1)
 
         if self.attack_sample_point + 2 < self.number_of_time_samples:
             # value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, 1), np.uint8)

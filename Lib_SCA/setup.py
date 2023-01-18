@@ -48,11 +48,11 @@ setup(
         "numba",
         "psutil",
         "tqdm",
-        "pyyaml"
+        "pyyaml",
     ],  ## PyQt5 is here as a backend for vispy, this might change in the future
     packages=find_packages(),
     python_requires='>=3.0',
-    setup_requires=["pytest-runner",],
+    setup_requires=["pytest-runner", ],
     tests_require=["pytest"],
-    entry_points={"console_scripts": ["lascarctl=scripts.lascarctl:main"],},
+    entry_points={"console_scripts": ["lascarctl=scripts.lascarctl:main"], },
 )

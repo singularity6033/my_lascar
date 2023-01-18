@@ -13,7 +13,25 @@ t_test_config = {
 
     # plotting params
     'figure_params_along_time': {'title': 't-test_result', 'x_label': 'time', 'y_label': 't-score'},
-    'figure_params_along_trace': {'title': 't-test_result', 'x_label': 'trace_batch', 'y_label': 't-score'}
+    'figure_params_along_trace': {'title': 't-test_result', 'x_label': 'trace_no', 'y_label': 't-score'}
+}
+
+"""
+chi2-test
+"""
+chi2_test_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'fix_random',
+
+    # engine name (trivial)
+    'engine_name': 'chi2test',
+
+    # batch size
+    'batch_size': 1000,
+
+    # plotting params
+    'figure_params_along_time': {'title': 'chi2-test_result', 'x_label': 'time', 'y_label': 'p-value'},
+    'figure_params_along_trace': {'title': 'chi2-test_result', 'x_label': 'trace_no', 'y_label': 'p-value'}
 }
 
 """
@@ -67,11 +85,14 @@ graph_test_attack_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'normal',
 
+    'no_of_key_guesses': 256,
+    'idx_of_correct_key_guess': 0,
+
     # engine name (trivial)
     'engine_name': 'graph_test_attack',
 
     # batch size
-    'batch_size': 1000000,
+    'batch_size': 5000,
 
     # plotting params
     'figure_params': {'title': 'graph_test_attack', 'x_label': 'key_guess', 'y_label': 'p-value'}
@@ -88,8 +109,27 @@ graph_distance_config = {
     'engine_name': 'graph_distance',
 
     # batch size
-    'batch_size': 1000,
+    'batch_size': 5000,
 
     # plotting params
     'figure_params': {'title': 'graph_distance_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+}
+
+graph_distance_attack_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'normal',
+
+    'no_of_key_guesses': 256,
+    'idx_of_correct_key_guess': 0,
+
+    'distance_type': 'deltacon0',
+
+    # engine name (trivial)
+    'engine_name': 'graph_distance_attack',
+
+    # batch size
+    'batch_size': 5000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_distance_attack_result', 'x_label': 'key_guess', 'y_label': 'p-value'}
 }

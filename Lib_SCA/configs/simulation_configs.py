@@ -35,7 +35,7 @@ normal_simulated_traces = {
     # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
     # automatically i1 the code
     'noise_mean_el': 0,
-    'noise_sigma_el': 0,
+    'noise_sigma_el': 0.5,
 
     # constant term used in calculation of trace power
     'constant': 0,
@@ -54,8 +54,8 @@ normal_simulated_traces = {
     'leakage_model_name': "default",
 
     # masking countermeasure
-    'masking': False,
-    'number_of_masking_bytes': 5,
+    'masking': True,
+    'number_of_masking_bytes': 1,
 
     # shuffle
     'shuffle': False,
@@ -78,7 +78,7 @@ fixed_random_traces = {
     # number_of_bytes * number_of_time_samples
     # give a list of ciphertext for corresponding bytes
     # assume each byte has the same ciphertext along the time axis
-    'fixed_set': [0],
+    'fixed_set': [1],
 
     # total number of time sample points one trace has
     'number_of_time_samples': 10,
@@ -106,7 +106,7 @@ fixed_random_traces = {
     # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
     # automatically i1 the code
     'noise_mean_el': 0,
-    'noise_sigma_el': 0.5,
+    'noise_sigma_el': 0.1,
 
     # constant term used in calculation of trace power
     'constant': 0,
@@ -126,7 +126,7 @@ fixed_random_traces = {
 
     # masking countermeasure
     'masking': True,
-    'number_of_masking_bytes': 10,
+    'number_of_masking_bytes': 1,
 
     # shuffle
     'shuffle': False,

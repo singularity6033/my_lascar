@@ -7,6 +7,9 @@ from PyAstronomy import pyaC
 from scipy import integrate
 from scipy.stats import mvn, multivariate_normal, binom, norm, rv_histogram, rv_discrete, bernoulli
 from sklearn.cluster import KMeans
+from Lib_SCA.lascar import CpaEngine, hamming, Session, SingleMatrixPlotOutputMethod, numerical_success_rate
+from Lib_SCA.lascar.tools.aes import sbox
+from bisect import bisect_left
 
 from Lib_SCA.lascar import numerical_success_rate
 from sklearn.neighbors import KernelDensity
@@ -52,16 +55,19 @@ import matplotlib.pyplot as plt
 # dic.update({'name': 123})
 
 # Generate some 'data'
-x = np.arange(2.)**2
-y = np.sin(x)
+# x = np.arange(2.)**2
+# y = np.sin(x)
+#
+# a = np.random.randint(0, 5, (1, 10))
+# b = np.random.randint(0, 5, (1, 10))
+# c = np.concatenate((a, b), axis=0)
+# xx = np.arange(11, 21)
+# plt.plot(xx, a.T)
+# plt.xticks(xx, ['a'] * 10)
+# plt.show()
 
-a = np.random.randint(0, 5, (1, 10))
-b = np.random.randint(0, 5, (1, 10))
-c = np.concatenate((a, b), axis=0)
-xx = np.arange(11, 21)
-plt.plot(xx, a.T)
-plt.xticks(xx, ['a'] * 10)
-plt.show()
+# print(hamming(sbox[1 ^ 0]))
+
 # Get coordinates and indices of zero crossings
 # xc, xi = pyaC.zerocross1d(x, y, getIndices=True)
 # fig, axs = [None] * 2, [None] * 2
@@ -120,7 +126,8 @@ plt.show()
 # print(np.unique(x))data
 from collections import Counter
 
-# xcx = np.array([0, 1, 3])
+xcx = np.array([0, 1, 2, 3, 4, 5])
+index = bisect_left(xcx, 5)
 # covvv = cov[:, xcx]
 # y = np.zeros((1000000, 10000))
 # y = np.array([-5, -4, -4, -3, -0.5, 0, 0.25, 3, 4, 6], ndmin=2).T

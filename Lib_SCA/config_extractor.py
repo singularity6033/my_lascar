@@ -50,20 +50,22 @@ class JSONConfig:
 
     def __init__(self, config_name):
         self.config_name = config_name
+        self.path = self.CONFIG_PATH + self.config_name + '.json'
+        if os.path.isfile(self.path):
+            os.remove(self.path)
 
     def get_config(self):
         """
         output a list of dicts
         """
-        path = self.CONFIG_PATH + self.config_name + '.json'
         json_list = list()
         try:
-            mtime = os.path.getmtime(path)
+            mtime = os.path.getmtime(self.path)
         except OSError as e:
             raise ValueError(f'config "{self.config_name}" not found"') from e
 
         if self.config_name not in self.config_cache or self.config_cache[self.config_name].mtime < mtime:
-            with open(path) as infile:
+            with open(self.path) as infile:
                 for item in jsonlines.Reader(infile):
                     json_list.append(item)
                 entry = json_list
@@ -74,9 +76,6 @@ class JSONConfig:
         """
         input a list of dicts
         """
-        path = self.CONFIG_PATH + self.config_name + '.json'
-        # if os.path.isfile(path):
-        #     os.remove(path)
-        with open(path, 'a') as f:
+        with open(self.path, 'a') as f:
             json.dump(dictionary, f)
             f.write("\n")
