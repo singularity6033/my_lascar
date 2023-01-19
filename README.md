@@ -9,5 +9,5 @@ python setup.py install --user
 ```
 
 ## Tutorial & Examples
-Please find more details in [wiki](https://github.com/singularity6033/my_lascar/wiki)
+Please find more details in [wiki](https://github.com/singularity6033/my_lascar/wiki).
 
