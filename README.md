@@ -1,6 +1,6 @@
 ## Introduction
 This repository is forked from the official [lascar](https://github.com/Ledger-Donjon/lascar) repository.
-In this repository, we designed more features and functionalities for our 'Machine-Learning-Based Side-Channel-Analysis for Hardware Security Evaluation' Project.
+In this repository, we designed more features and functionalities for 'Machine-Learning-Based Side-Channel-Analysis for Hardware Security Evaluation' Project.
 
 ## Installation
 Clone the repository then use the setup.py file, based on setuptools:
