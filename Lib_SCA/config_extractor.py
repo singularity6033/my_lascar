@@ -21,7 +21,7 @@ class YAMLConfig:
     the modified time is used so that if a config is changed while the program is running, the cache is cleared and
     the new version of the config is retrieved.
     """
-    CONFIG_PATH = 'Lib_SCA/configs/yaml'
+    CONFIG_PATH = './configs/yaml'
     config_cache: Dict[str, CacheEntry] = {}
 
     def get_config(self, config_name):
@@ -45,7 +45,7 @@ class JSONConfig:
     .json file may contain multiple objects of config parameters, usually used in the scanning program
     write and read multiple records sequentially
     """
-    CONFIG_PATH = 'Lib_SCA/configs/json/'
+    CONFIG_PATH = './configs/json/'
     config_cache: Dict[str, CacheEntry] = {}
 
     def __init__(self, config_name):

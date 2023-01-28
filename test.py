@@ -30,7 +30,8 @@ import matplotlib.pyplot as plt
 # a = [i for i in range(0)]
 # a = np.arange(10)
 # b = a[6:(3-1)*2+6+1:2]
-# a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+b = np.sum(a, axis=1, keepdims=True)
 # c = np.ones((5, 1))
 # x = np.array([[0, 0, 0],
 #             [1, 1, 0],

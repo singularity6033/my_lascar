@@ -1,14 +1,13 @@
 import os
 
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.attack_configs import dpa_config
-from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
+from configs.attack_configs import dpa_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import SingleMatrixPlotOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
 from Lib_SCA.lascar import Session
-import matplotlib.pyplot as plt
+
 
 # from real_traces_generator import real_trace_generator
 

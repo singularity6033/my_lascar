@@ -1,13 +1,8 @@
-import os
-
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy.stats import ttest_ind
 from tqdm import tqdm
 
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.evaluation_configs import graph_distance_config, graph_distance_attack_config
-from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
+from Lib_SCA.config_extractor import JSONConfig
+from configs.evaluation_configs import graph_distance_attack_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import SingleOnePlotOutputMethod, NonIncrementalOutputMethod
 from Lib_SCA.lascar import Session, GraphDistanceEngine, GraphDistanceEngine_Attack
@@ -87,10 +82,10 @@ def graph_based_distance_attack(params, trace_params):
                                                               time_delay=2,
                                                               dim=3,
                                                               distance_type=params['distance_type'],
-                                                              num_bins=30,
+                                                              num_bins=50,
                                                               solution=params['idx_of_correct_key_guess']
                                                               )
-    output_path = './results/graph_distance_attack/'
+    output_path = './results/graph_distance_attack_v1/'
     session = Session(container,
                       engine=graph_distance_attack_engine,
                       output_method=NonIncrementalOutputMethod(
@@ -125,7 +120,7 @@ if __name__ == '__main__':
     gt_params = graph_distance_attack_config
     trace_info = normal_simulated_traces
     # json config file generation
-    json_config = JSONConfig('graph_dist_attack_params_v2')
+    json_config = JSONConfig('graph_dist_attack_params_v1')
     for dist in ['edit_distance']:
         gt_params['distance_type'] = dist
         for m_number_of_traces in [10000, 50000]:

@@ -232,6 +232,7 @@ class GraphTestEngine_Attack(GuessEngine):
                 self._samples_by_selection[idx_1_i][1] = leakage if not isinstance(self._samples_by_selection[idx_1_i][1], np.ndarray) \
                     else np.concatenate((self._samples_by_selection[idx_1_i][1], leakage), axis=0)
             self._count_x[idx_1, 1] += 1
+        print('done')
 
     def _finalize(self):
         for guess in tqdm(range(self._number_of_guesses)):

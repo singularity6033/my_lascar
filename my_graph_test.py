@@ -5,17 +5,12 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy.stats import ttest_ind
-from tqdm import tqdm
 
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.evaluation_configs import graph_test_config, graph_test_attack_config
-from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
+from configs.evaluation_configs import graph_test_attack_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import SingleOnePlotOutputMethod, SingleMatrixPlotOutputMethod, NonIncrementalOutputMethod
-from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine, GraphTestEngine_Attack
+from Lib_SCA.lascar import SingleOnePlotOutputMethod, NonIncrementalOutputMethod
+from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphTestEngine_Attack
 from Lib_SCA.lascar.tools.aes import sbox
 
 

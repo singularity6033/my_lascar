@@ -8,21 +8,14 @@ It needs:
 - a "guess_range" which will define what are the guess possible values
 
 """
-import sys
 
-import numpy as np
-from matplotlib import pyplot as plt
-from tqdm import tqdm
 from threading import active_count
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.evaluation_configs import cmi_config
-from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
+from configs.evaluation_configs import cmi_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import MultipleMatrixPlotsOutputMethod
-from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session, MatPlotLibOutputMethod
+from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session
 from Lib_SCA.lascar.tools.aes import sbox
-import tracemalloc
-import ruamel.yaml
 
 
 def continuous_mutual_information(params, trace_params):

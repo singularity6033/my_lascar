@@ -5,17 +5,14 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy.stats import ttest_ind
 from tqdm import tqdm
 
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.evaluation_configs import graph_test_config, graph_test_attack_config
-from Lib_SCA.configs.simulation_configs import fixed_random_traces, normal_simulated_traces
+from Lib_SCA.config_extractor import JSONConfig
+from configs.evaluation_configs import graph_test_attack_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import SingleOnePlotOutputMethod, SingleMatrixPlotOutputMethod, NonIncrementalOutputMethod
-from Lib_SCA.lascar import Session, GraphTestEngine, GraphMIEngine, GraphDistanceEngine, GraphTestEngine_Attack
+from Lib_SCA.lascar import SingleOnePlotOutputMethod, NonIncrementalOutputMethod
+from Lib_SCA.lascar import Session, GraphTestEngine, GraphTestEngine_Attack
 from Lib_SCA.lascar.tools.aes import sbox
 
 
@@ -90,7 +87,8 @@ def graph_based_test_attack(params, trace_params):
                       output_method=NonIncrementalOutputMethod(
                           figure_params=params['figure_params'],
                           output_path=output_path),
-                      output_steps=params['batch_size'])
+                      output_steps=params['batch_size']
+                      )
 
     session.run(batch_size=params['batch_size'])
 
@@ -102,13 +100,13 @@ if __name__ == '__main__':
     gt_params = graph_test_attack_config
     trace_info = normal_simulated_traces
     # json config file generation
-    json_config = JSONConfig('graph_direct_test_attack_v2')
+    json_config = JSONConfig('graph_direct_test_attack_v1')
     # 10k, 50k, 200k, 500k, 1000k
-    for m_number_of_traces in [50000]:
-        for m_noise_sigma_el in [0.5]:
+    for m_number_of_traces in [5000, 10000, 50000]:
+        for m_noise_sigma_el in [0, 0.5]:
             for shuffle_state in [True, False]:
                 for shift_state in [True, False]:
-                    for m_masking_bytes in [1]:
+                    for m_masking_bytes in [1, 5]:
                         trace_info['number_of_traces'] = m_number_of_traces
                         trace_info['noise_sigma_el'] = m_noise_sigma_el
                         trace_info['shuffle'] = shuffle_state

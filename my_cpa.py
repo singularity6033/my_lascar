@@ -10,13 +10,10 @@ It needs:
 """
 import os
 
-from matplotlib import pyplot as plt
-
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.attack_configs import cpa_config
-from Lib_SCA.configs.simulation_configs import normal_simulated_traces, fixed_random_traces
+from configs.attack_configs import cpa_config
+from configs.simulation_configs import normal_simulated_traces
 from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
-from Lib_SCA.lascar import CpaEngine, hamming, Session, SingleMatrixPlotOutputMethod, numerical_success_rate
+from Lib_SCA.lascar import CpaEngine, hamming, Session, SingleMatrixPlotOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 
 

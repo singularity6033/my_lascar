@@ -3,7 +3,7 @@ configs for normal_simulated_traces
 """
 normal_simulated_traces = {
     # total number of traces
-    'number_of_traces': 50000,
+    'number_of_traces': 5000,
     # total number of bytes for each time sample in one trace
     'number_of_bytes': 1,
 

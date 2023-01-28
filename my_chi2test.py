@@ -5,10 +5,9 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
-from Lib_SCA.config_extractor import YAMLConfig, JSONConfig
-from Lib_SCA.configs.evaluation_configs import chi2_test_config
-from Lib_SCA.configs.simulation_configs import fixed_random_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from configs.evaluation_configs import chi2_test_config
+from configs.simulation_configs import fixed_random_traces
+from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import SingleVectorPlotOutputMethod
 from Lib_SCA.lascar import Session, Chi2TestEngine
 

@@ -1,6 +1,5 @@
-from Lib_SCA.config_extractor import YAMLConfig
-from Lib_SCA.configs.simulation_configs import normal_simulated_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer, TraceBatchContainer
+from configs.simulation_configs import normal_simulated_traces
+from Lib_SCA.lascar import SimulatedPowerTraceContainer, TraceBatchContainer
 
 container = SimulatedPowerTraceContainer(config_params=normal_simulated_traces)
 

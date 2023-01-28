@@ -14,10 +14,8 @@ from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph, 
 
 class GraphDistanceEngine(PartitionerEngine):
     """
-        GraphDistanceEngine is used to calculate graph differences by some distance measurements and corresponding statistical
-        testing procedure is also included in this engine
-        based on the paper: Wills, Peter, and François G. Meyer.
-        "Metrics for graph comparison: a practitioner’s guide." Plos one 15.2 (2020): e0228728.
+        GraphDistanceEngine is used to calculate graph differences by some distance measurements and corresponding statistical testing procedure is also included in this engine
+        based on the paper: Wills, Peter, and François G. Meyer. "Metrics for graph comparison: a practitioner’s guide." Plos one 15.2 (2020): e0228728.
     """
 
     def __init__(self,
@@ -82,7 +80,7 @@ class GraphDistanceEngine(PartitionerEngine):
 
         # form a rdpg (distribution)
         # grdpg_r = Generalised_RDPG(init_graph_r.adj_matrix).generate()
-        # grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix).generate()\
+        # grdpg_f = Generalised_RDPG(init_graph_f.adj_matrix).generate()
         random_sample = init_graph_r.adj_matrix
         fixed_sample = init_graph_f.adj_matrix
         random_sample_copy = np.copy(random_sample)
@@ -98,6 +96,7 @@ class GraphDistanceEngine(PartitionerEngine):
         # m0, sigma0 = np.mean(d0), np.std(d0)
         # distance_contrast = (d1 - m0) / sigma0
         # ref = (d0 - m0) / sigma0
+
         p_value = -1.0
         if self.test_type == 'z-test':
             z_score, p_value_z = ztest(d0, d1, value=0)
@@ -107,12 +106,12 @@ class GraphDistanceEngine(PartitionerEngine):
             p_value = p_value_t
         elif self.test_type == 'chi-test':
             min_b, max_b = min(np.min(d0), np.min(d1)), max(np.max(d0), np.max(d1))
-            num_bins = int(max_b - min_b)
-            hist_d0, _ = np.histogram(d0, bins=num_bins, range=(min_b, max_b))
-            hist_d1, _ = np.histogram(d1, bins=num_bins, range=(min_b, max_b))
+            hist_d0, _ = np.histogram(d0, bins=self.num_bins, range=(min_b, max_b))
+            hist_d1, _ = np.histogram(d1, bins=self.num_bins, range=(min_b, max_b))
             hist_d0, hist_d1 = np.array(hist_d0, ndmin=2), np.array(hist_d1, ndmin=2)
+
             chi2_table = np.concatenate((hist_d0, hist_d1), axis=0)
-            _, p_value, _, _ = chi2_contingency(chi2_table)
+            p_value = my_chi2test(chi2_table)
             if p_value == 0:
                 # minimum value in float
                 p_value = np.finfo(float).tiny
@@ -134,8 +133,8 @@ class GraphDistanceEngine(PartitionerEngine):
 
 class GraphDistanceEngine_Attack(GuessEngine):
     """
-        attack version of GraphDistanceEngine, pls ref to the DpaEngine, different key guesses can be used
-        hypothetical testing used in this engine is chi2 testing (ref to the Chi2Engine)
+        attack version of GraphDistanceEngine, pls ref to the DpaEngine
+        different key guesses can be used hypothetical testing used in this engine is chi2 testing (ref to the Chi2Engine)
     """
 
     def __init__(self,
@@ -222,19 +221,14 @@ class GraphDistanceEngine_Attack(GuessEngine):
             for i in range(self.sample_size):
                 d0[i] = eval('nc.' + self.distance_type)(graph_sample0[i], graph_sample0_copy[i])
                 d1[i] = eval('nc.' + self.distance_type)(graph_sample0[i], graph_sample1[i])
-            
-            d = np.concatenate((d0, d1))
-            _, boundary_arr = np.histogram(d, bins='auto', range=(np.min(d), np.max(d)))
-            hist_d0 = self.histogram_count(d0, boundary_arr)
-            hist_d1 = self.histogram_count(d1, boundary_arr)
-            # min_b, max_b = min(np.min(d0), np.min(d1)), max(np.max(d0), np.max(d1))
-            # hist_d0, _ = np.histogram(d0, bins='auto', range=(min_b, max_b))
-            # auto_number_of_bins = len(hist_d0)
-            # hist_d1, _ = np.histogram(d1, bins=self.num_bins, range=(min_b, max_b))
+
+            min_b, max_b = min(np.min(d0), np.min(d1)), max(np.max(d0), np.max(d1))
+            hist_d0, _ = np.histogram(d0, bins=self.num_bins, range=(min_b, max_b))
+            hist_d1, _ = np.histogram(d1, bins=self.num_bins, range=(min_b, max_b))
             hist_d0, hist_d1 = np.array(hist_d0, ndmin=2), np.array(hist_d1, ndmin=2)
+
             chi2_table = np.concatenate((hist_d0, hist_d1), axis=0)
-            # chi2_table[chi2_table == 0] = 1
-            _, p_value, _, _ = chi2_contingency(chi2_table)
+            p_value = my_chi2test(chi2_table)
             if p_value == 0:
                 # minimum value in float
                 p_value = np.finfo(float).tiny
@@ -250,3 +244,16 @@ class GraphDistanceEngine_Attack(GuessEngine):
                 index -= 1
             hist_count[index] += 1
         return hist_count
+
+
+def my_chi2test(chi2_table):
+    n = np.sum(chi2_table)
+    col_sum = np.sum(chi2_table, axis=0, keepdims=True)
+    row_sum = np.sum(chi2_table, axis=1, keepdims=True)
+    expected_freq = np.dot(row_sum, col_sum) / n
+    tmp1 = (chi2_table - expected_freq) ** 2
+    tmp2 = np.divide(tmp1, expected_freq, out=np.zeros_like(tmp1), where=expected_freq != 0)
+    chi_score = np.sum(tmp2)
+    dof = (chi2_table.shape[0] - 1) * (chi2_table.shape[1] - 1)
+    p_value = chi2.sf(chi_score, dof)
+    return p_value
