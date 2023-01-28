@@ -61,14 +61,6 @@ def graph_based_distance_attack(params, trace_params):
 
     # selection attack regions along time axis
     # container.leakage_section = params['attack_range']
-    """
-    Then we build the DpaEngine.
-
-    If you take a look at the help for DpaEngine, you'll see that it needs 3 things to be instantiated:
-    - a name for the engine ("dpa" in our case)
-    - a selection function (under guess hypothesis): this function will separate the traces into two sets, depending on a hypothesis: "guess". This function will be applied on every trace values, for every possible guess.
-    - a guess_range: what are the guesses you want to test?
-    """
 
     def selection_function(value, guess, ab=attack_byte, at=attack_time):
         # LSB
