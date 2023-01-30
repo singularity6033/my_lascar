@@ -15,7 +15,7 @@ from Lib_SCA.lascar import Session, Chi2TestEngine
 # from real_traces_generator import real_trace_generator
 
 
-def chi2_test(params, trace_params):
+def chi2_test(params, trace_params, output_path):
     container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
@@ -45,10 +45,10 @@ def chi2_test(params, trace_params):
                       output_method=SingleVectorPlotOutputMethod(
                           figure_params_along_time=params['figure_params_along_time'],
                           figure_params_along_trace=params['figure_params_along_trace'],
-                          output_path='./results/chi2-test'),
+                          output_path=output_path),
                       output_steps=params['batch_size'])
     session.run(batch_size=params['batch_size'])
 
 
 if __name__ == '__main__':
-    chi2_test(chi2_test_config, fixed_random_traces)
+    chi2_test(chi2_test_config, fixed_random_traces, output_path='./results/chi2-test')

@@ -268,3 +268,52 @@ from bisect import bisect_left
 # x = np.random.choice(a, 20, replace=False)
 # y = np.random.choice(a, 20, replace=False)
 # z = np.random.choice(a, 20, replace=False)
+
+from Lib_SCA.lascar import SimulatedPowerTraceContainer
+from configs.simulation_configs import normal_simulated_traces
+
+# create instance for simulated power traces (normal)
+container = SimulatedPowerTraceContainer(config_params=normal_simulated_traces)
+
+# then we can access the trace like a python list to get traces we want
+
+# get 1st simulated traces
+x1 = container[0]
+
+# get 5th to 9th simulated traces
+x2 = container[4:9]
+
+# get all simulated traces
+x3 = container[:]
+
+# the instance and all returns are also python generator can be used in for loop
+
+# print each trace info in x2
+for tr in x2:
+    print(tr)
+
+# for single trace (x1), the return is a 'Trace' object, which has two main attributes: leakage and value
+# we can obtain by
+x1_leakage = x1.leakage  # ndarray
+x1_value = x1.value  # dict
+# get middle components...
+x1_plain_text = x1_value['plaintext']
+x1_lmo = x1_value['leakage_model_output']
+
+# for multiple traces (x2, x3), the return is a 'TraceBatchContainer' object, which has two main attributes: leakages and values
+# we can obtain by
+x2_leakages = x2.leakages  # ndarray
+x2_values = x2.values  # dict
+
+# obtain customized traces (intercept along time axis)
+# can pass a generator-like, or just desired time sample index list
+
+# get traces for the first 5 time samples
+container.leakage_section = range(5)
+x4 = container[:].leakages
+
+# get traces for 1st, 3rd, 5th time samples
+container.leakage_section = [0, 2, 4]
+x5 = container[:].leakages
+
+

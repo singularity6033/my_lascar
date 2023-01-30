@@ -9,7 +9,8 @@ from Lib_SCA.lascar import Session, GraphDistanceEngine, GraphDistanceEngine_Att
 from Lib_SCA.lascar.tools.aes import sbox
 
 
-def graph_based_distance(params, trace_params):
+def graph_based_distance(params, trace_params, output_path):
+    container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
@@ -32,7 +33,6 @@ def graph_based_distance(params, trace_params):
                '_#shuffle_' + str(trace_params['shuffle']) + '_#shift_' + str(trace_params['shift']) + \
                '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
 
-    output_path = './results/graph_distance/' + params['_id']
     # We choose here to plot the resulting curve
     session = Session(container, engine=graph_distance_engine,
                       output_method=SingleOnePlotOutputMethod(figure_params=params['figure_params'],
@@ -47,7 +47,8 @@ def graph_based_distance(params, trace_params):
     del session
 
 
-def graph_based_distance_attack(params, trace_params):
+def graph_based_distance_attack(params, trace_params, output_path):
+    container = None
     if params['mode'] == 'normal':
         container = SimulatedPowerTraceContainer(config_params=trace_params)
     elif params['mode'] == 'fix_random':
@@ -77,7 +78,6 @@ def graph_based_distance_attack(params, trace_params):
                                                               num_bins=50,
                                                               solution=params['idx_of_correct_key_guess']
                                                               )
-    output_path = './results/graph_distance_attack_v1/'
     session = Session(container,
                       engine=graph_distance_attack_engine,
                       output_method=NonIncrementalOutputMethod(
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     # dict_list = json_config.get_config()
     # for i, dict_i in tqdm(enumerate(dict_list)):
     #     print('[INFO] Processing #', i)
-    #     graph_based_distance(dict_i, trace_info)
+    #     graph_based_distance(dict_i, trace_info, './results/graph_distance/' + dict_i['_id'])
 
     gt_params = graph_distance_attack_config
     trace_info = normal_simulated_traces
@@ -135,6 +135,6 @@ if __name__ == '__main__':
     dict_list = json_config.get_config()
     for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        graph_based_distance_attack(gt_params, dict_i)
+        graph_based_distance_attack(gt_params, dict_i, output_path='./results/graph_distance_attack_v1/' + dict_i['_id'])
 
-    # graph_based_distance_attack(gt_params, trace_info)
+    # graph_based_distance_attack(gt_params, trace_info, output_path='./results/graph_distance_attack_v1/')

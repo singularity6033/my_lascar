@@ -2,7 +2,7 @@ import os
 
 from configs.attack_configs import dpa_config
 from configs.simulation_configs import normal_simulated_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import SimulatedPowerTraceContainer
 from Lib_SCA.lascar import SingleMatrixPlotOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
@@ -12,14 +12,13 @@ from Lib_SCA.lascar import Session
 # from real_traces_generator import real_trace_generator
 
 
-def dpa_attack(params, trace_params):
+def dpa_attack(params, trace_params, output_path):
     container = None
     if params['mode'] == 'normal':
         container = SimulatedPowerTraceContainer(config_params=trace_params)
-    elif params['mode'] == 'fix_random':
-        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
-    # elif params['mode'] == 'real':
-    #     container = real_trace_generator()
+    elif params['mode'] == 'real':
+        pass
+        # container = real_trace_generator()
 
     attack_byte = container.idx_exp[0]
     attack_time = container.attack_sample_point
@@ -46,7 +45,6 @@ def dpa_attack(params, trace_params):
                            guess_range,
                            solution=params['idx_of_correct_key_guess'])
 
-    output_path = 'results/dpa'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -64,4 +62,4 @@ def dpa_attack(params, trace_params):
 
 
 if __name__ == '__main__':
-    dpa_attack(dpa_config, normal_simulated_traces)
+    dpa_attack(dpa_config, normal_simulated_traces, output_path='./results/dpa')

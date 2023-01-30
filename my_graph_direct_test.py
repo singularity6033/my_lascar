@@ -19,7 +19,8 @@ from Lib_SCA.lascar.tools.aes import sbox
 # from real_traces_generator import real_trace_generator
 
 
-def graph_based_test(params, trace_params):
+def graph_based_test(params, trace_params, output_path):
+    container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
@@ -34,8 +35,6 @@ def graph_based_test(params, trace_params):
                                         partition_function,
                                         time_delay=2,
                                         dim=3)
-    # output_path = trace_params['_id']
-    output_path = 'results/graph_test'
     # We choose here to plot the resulting curve
     session = Session(container, engine=graph_test_engine,
                       output_method=SingleOnePlotOutputMethod(figure_params=params['figure_params'],
@@ -46,7 +45,8 @@ def graph_based_test(params, trace_params):
     session.run(batch_size=params['batch_size'])
 
 
-def graph_based_test_attack(params, trace_params):
+def graph_based_test_attack(params, trace_params, output_path):
+    container = None
     if params['mode'] == 'normal':
         container = SimulatedPowerTraceContainer(config_params=trace_params)
     elif params['mode'] == 'fix_random':
@@ -73,7 +73,6 @@ def graph_based_test_attack(params, trace_params):
                                                       time_delay=2,
                                                       dim=3,
                                                       solution=params['idx_of_correct_key_guess'])
-    output_path = './results/graph_based_test_attack/' + trace_params['_id']
     session = Session(container,
                       engine=graph_direct_test_engine,
                       output_method=NonIncrementalOutputMethod(
@@ -113,6 +112,6 @@ if __name__ == '__main__':
     dict_list = json_config.get_config()
     for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        graph_based_test_attack(gt_params, dict_i)
+        graph_based_test_attack(gt_params, dict_i, output_path='./results/graph_based_test_attack/' + dict_i['_id'])
 
-    # graph_based_test_attack(graph_test_attack_config, normal_simulated_traces)
+    # graph_based_test_attack(graph_test_attack_config, normal_simulated_traces, output_path='./results/graph_based_test_attack/')
