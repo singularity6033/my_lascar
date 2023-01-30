@@ -9,7 +9,7 @@ real_values = container[:container.number_of_traces].values
 idx_exp = container.idx_exp
 attack_sample_point = container.attack_sample_point
 
-
+#
 def real_trace_generator(leakages=real_leakages,
                          values=real_values,
                          ie=idx_exp,
