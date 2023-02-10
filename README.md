@@ -5,7 +5,7 @@ In this repository, we designed more features and functionalities for 'Machine-L
 ## Installation
 Clone the repository then use the setup.py file, based on setuptools:
 ```
-python setup.py install --user
+python ./Lib_SCA/setup.py install --user
 ```
 
 ## Tutorial & Examples
