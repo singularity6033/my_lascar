@@ -439,10 +439,10 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 return
             else:
                 value["plaintext"] = np.array(self.fixed_set, ndmin=2).T
-                tmp = value["plaintext"] ^ value["key"]
-                for i in range(self.number_of_bytes):
-                    sbox_output = sbox[tmp[i]]
-                    tmp[i] = self.leakage_model(sbox_output)
+                # tmp = value["plaintext"] ^ value["key"]
+                # for i in range(self.number_of_bytes):
+                #     sbox_output = sbox[tmp[i]]
+                #     tmp[i] = self.leakage_model(sbox_output)
                 # generate a fixed trace along all time samples
                 # value["leakage_model_output"] = tmp.repeat(self.number_of_time_samples, axis=1)
 
@@ -463,10 +463,12 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
 
             # # keep the same value along the time axis
             cipher = cipher.repeat(3, axis=1)
+            value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return
-        value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+
         if self.masking and self.number_of_masking_bytes > 0:
             value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
 
