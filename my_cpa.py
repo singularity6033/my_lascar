@@ -58,7 +58,7 @@ def cpa_attack(params, trace_params, output_path):
                           output_path=output_path,
                           filename='cpa',
                           contain_raw_file=True),
-                      output_steps=params['batch_size'])
+                      output_steps=200)
 
     session.run(batch_size=params['batch_size'])
     # results = cpa_engine.finalize()
@@ -69,30 +69,30 @@ if __name__ == '__main__':
     # for the single trail (just use parameters once)
     cpa_attack(cpa_config, normal_simulated_traces, output_path='./results/cpa')
 
-    # for the multiple trails (parameters sweeping)
-    # initial parameters for CPA and simulated traces
-    gt_params = cpa_config
-    trace_info = normal_simulated_traces
-
-    # create .json file to save all parameters setting
-    json_config = JSONConfig('graph_direct_test_attack_v1')\
-
-    for m_number_of_traces in [5000, 10000, 50000]:
-        for m_noise_sigma_el in [0, 0.5]:
-            for shuffle_state in [True, False]:
-                for shift_state in [True, False]:
-                    trace_info['number_of_traces'] = m_number_of_traces
-                    trace_info['noise_sigma_el'] = m_noise_sigma_el
-                    trace_info['shuffle'] = shuffle_state
-                    trace_info['shift'] = shift_state
-                    # create '_id' to identify each record
-                    trace_info['_id'] = '_el_' + str(m_noise_sigma_el) + '_#shift_' + str(shift_state) + \
-                                        '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                    json_config.generate_config(trace_info)
-
-    # get .json file just created and read all parameters setting
-    dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list)):
-        print('[INFO] Processing #', i)
-        cpa_attack(gt_params, dict_i, './results/cpa/' + dict_i['_id'])
+    # # for the multiple trails (parameters sweeping)
+    # # initial parameters for CPA and simulated traces
+    # gt_params = cpa_config
+    # trace_info = normal_simulated_traces
+    #
+    # # create .json file to save all parameters setting
+    # json_config = JSONConfig('graph_direct_test_attack_v1')\
+    #
+    # for m_number_of_traces in [5000, 10000, 50000]:
+    #     for m_noise_sigma_el in [0, 0.5]:
+    #         for shuffle_state in [True, False]:
+    #             for shift_state in [True, False]:
+    #                 trace_info['number_of_traces'] = m_number_of_traces
+    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                 trace_info['shuffle'] = shuffle_state
+    #                 trace_info['shift'] = shift_state
+    #                 # create '_id' to identify each record
+    #                 trace_info['_id'] = '_el_' + str(m_noise_sigma_el) + '_#shift_' + str(shift_state) + \
+    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                 json_config.generate_config(trace_info)
+    #
+    # # get .json file just created and read all parameters setting
+    # dict_list = json_config.get_config()
+    # for i, dict_i in tqdm(enumerate(dict_list)):
+    #     print('[INFO] Processing #', i)
+    #     cpa_attack(gt_params, dict_i, './results/cpa/' + dict_i['_id'])
 

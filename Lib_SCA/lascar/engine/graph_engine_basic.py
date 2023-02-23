@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import norm, bernoulli
+from scipy.stats import norm, bernoulli, pearsonr
 from PyAstronomy import pyaC
 
 
@@ -167,6 +167,119 @@ class Phase_Space_Reconstruction_Graph:
                 best_g = tmp
             prev_density = curr_density
         return best_g
+
+
+class Simple_PSRG:
+    """
+       simplified version of Phase_Space_Reconstruction_Graph, no optimization, no distance but correlation
+    """
+
+    def __init__(self, time_series, time_delay, dim, sampling_interval=1, to_unweighted=True):
+        """
+        Phase_Space_Reconstruction_Graph
+        :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
+        :param time_delay: delayed time interval used in phase space reconstruction
+        :param dim: the dimension of embedding delayed time series (vectors)
+        :param sampling_interval: used to sample the delayed time series, default is 1
+        :params to_unweighted: whether or not convert to unweighted graphs
+        :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
+                                vectors in the reconstructed phase space
+        :param adj_matrix: resulting adjacent matrix of the generated graph
+        """
+        self.time_series = time_series
+        self.number_of_time_series = self.time_series.shape[0]
+        self.number_of_time_points = self.time_series.shape[1]
+
+        self.time_delay = time_delay
+        self.dim = dim
+        self.sampling_interval = sampling_interval
+        self.to_unweighted = to_unweighted
+
+        self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
+        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
+                                   dtype=np.float64)
+        self.w_to_unw_thresholds = list()
+
+    @staticmethod
+    def _calc_correlation_matrix(a, b):
+        num_of_vec = a.shape[0]
+        res = np.zeros((num_of_vec, num_of_vec))
+        for i in range(num_of_vec):
+            for j in range(num_of_vec):
+                if i <= j:
+                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
+                    res[j, i] = res[i, j]
+                else:
+                    continue
+        return np.abs(res)
+
+    def generate(self):
+        """
+        the time delayed embedding process
+        """
+        for i in range(self.number_of_time_series):
+            tmp = np.zeros((self.number_of_nodes, self.dim))
+            for j in range(self.number_of_nodes):
+                tmp[j, :] = self.time_series[i, j:j + (self.dim - 1) * self.time_delay + 1:self.time_delay]
+            weighted_adj = self._calc_correlation_matrix(tmp, tmp)
+            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
+            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new)
+            self.adj_matrix[i, :, :] = weighted_adj_new
+            self.w_to_unw_thresholds.append(w_to_unw_threshold)
+
+    def _calc_best_conversion_threshold(self, g):
+        """
+            inputs: one adjacent matrix of weighted graph
+            using the graph density to choose the optimal threshold
+            for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
+            m-number of edges; n-number of nodes
+        """
+        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
+        best_threshold = g[0][0]
+        prev_density = 0
+        best_diff = float('-inf')
+        for i, threshold in enumerate(potential_thresholds):
+            tmp = np.copy(g)
+            idx_0 = tmp > threshold
+            idx_1 = tmp <= threshold
+            tmp[idx_0], tmp[idx_1] = 0, 1
+            tmp[np.diag_indices_from(tmp)] = 0
+            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
+            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
+            cur_diff = 0 if i == 0 else (curr_density - prev_density)
+            if cur_diff > best_diff:
+                best_diff = cur_diff
+                best_threshold = threshold
+            prev_density = curr_density
+        return best_threshold
+
+    def _convert_to_unweighted_graphs(self, g):
+        """
+        inputs: one adjacent matrix of weighted graph
+        using the graph density to choose the optimal threshold
+        for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
+        m-number of edges; n-number of nodes
+        """
+        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
+        best_g = g
+        best_threshold = potential_thresholds[0]
+        prev_density = 0
+        best_diff = float('-inf')
+        for i, threshold in enumerate(potential_thresholds):
+            tmp = np.copy(g)
+            idx_0 = tmp > threshold
+            idx_1 = tmp <= threshold
+            tmp[idx_0], tmp[idx_1] = 0, 1
+            tmp[np.diag_indices_from(tmp)] = 0
+            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
+            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
+            cur_diff = 0 if i == 0 else (curr_density - prev_density)
+            if cur_diff > best_diff:
+                best_diff = cur_diff
+                best_g = tmp
+                best_threshold = threshold
+            prev_density = curr_density
+        return best_g, best_threshold
 
 
 class Generalised_RDPG:

@@ -77,32 +77,62 @@ def continuous_mutual_information(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    cmi_params = cmi_config
+    # cmi_params = cmi_config
+    # trace_info = normal_simulated_traces
+    # # json config file generation
+    # json_config = JSONConfig('cmi_test_1')
+    # # 10k, 50k, 200k, 500k, 1000k
+    # for m_number_of_traces in [500000, 10000000]:
+    #     for m_number_of_bytes in range(1, 17):
+    #         for m_noise_sigma_el in [0, 0.25, 0.5]:
+    #             for m_num_of_masking_bytes in [0, 1, 2]:
+    #                 m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
+    #                 trace_info['number_of_traces'] = m_number_of_traces
+    #                 trace_info['number_of_bytes'] = m_number_of_bytes
+    #                 trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
+    #                 trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
+    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                 trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
+    #                                     '_el_' + str(trace_info['noise_sigma_el']) + \
+    #                                     '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
+    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                 json_config.generate_config(trace_info)
+    #
+    # # get json config file
+    # dict_list = json_config.get_config()
+    # for i, dict_i in tqdm(enumerate(dict_list[1:])):
+    #     print('[INFO] Processing #', i)
+    #     continuous_mutual_information(cmi_params, dict_i, output_path='./results/cmi_results_test/' + dict_i['_id'])
+
+    gt_params = cmi_config
     trace_info = normal_simulated_traces
     # json config file generation
-    json_config = JSONConfig('cmi_test_1')
-    # 10k, 50k, 200k, 500k, 1000k
-    for m_number_of_traces in [500000, 10000000]:
-        for m_number_of_bytes in range(1, 17):
-            for m_noise_sigma_el in [0, 0.25, 0.5]:
-                for m_num_of_masking_bytes in [0, 1, 2]:
-                    m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
-                    trace_info['number_of_traces'] = m_number_of_traces
-                    trace_info['number_of_bytes'] = m_number_of_bytes
-                    trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
-                    trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
-                    trace_info['noise_sigma_el'] = m_noise_sigma_el
-                    trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
-                                        '_el_' + str(trace_info['noise_sigma_el']) + \
-                                        '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
-                                        '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                    json_config.generate_config(trace_info)
+    json_config = JSONConfig('cmi_v4')
+    # 500k
+    # for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
+    #     for m_masking_bytes in range(10):
+    #         trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #         trace_info['number_of_masking_bytes'] = m_masking_bytes
+    #         trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
+    #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #         json_config.generate_config(trace_info)
+
+    for m_number_of_traces in [50000, 100000, 250000, 500000]:
+        for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
+            for m_masking_bytes in range(10):
+                trace_info['number_of_traces'] = m_number_of_traces
+                trace_info['noise_sigma_el'] = m_noise_sigma_el
+                trace_info['number_of_masking_bytes'] = m_masking_bytes
+                trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
+                                    '_#mask_' + str(m_masking_bytes) + \
+                                    '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+                json_config.generate_config(trace_info)
 
     # get json config file
     dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list[1:])):
+    for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        continuous_mutual_information(cmi_params, dict_i, output_path='./results/cmi_results_test/' + dict_i['_id'])
+        continuous_mutual_information(gt_params, dict_i, output_path='./results/cmi_v4/' + dict_i['_id'])
 
     # continuous_mutual_information(cmi_params, trace_info, output_path='./plots/cmi_results_test/')
 

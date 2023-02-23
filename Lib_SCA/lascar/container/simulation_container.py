@@ -264,7 +264,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
-        p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
+        # p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
+        p_el = np.random.normal(loc=self.noise_mean_el, scale=np.sqrt(self.noise_sigma_el), size=self.number_of_time_samples)
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -462,9 +463,12 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
                 cipher[i] = self.leakage_model(sbox_output)
 
             # # keep the same value along the time axis
-            cipher = cipher.repeat(3, axis=1)
-            value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
-
+            if idx % 2 == 0:
+                cipher = cipher.repeat(3, axis=1)
+                value["leakage_model_output"][:, self.attack_sample_point:self.attack_sample_point + 3] = cipher
+            else:
+                # generate a fixed trace along all time samples
+                value["leakage_model_output"] = cipher.repeat(self.number_of_time_samples, axis=1)
         else:
             print('[INFO] attack sample point is too late, pls choose earlier ones')
             return

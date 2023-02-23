@@ -92,8 +92,10 @@ class SingleMatrixPlotOutputMethod(OutputMethod):
                 os.makedirs(plot_path2)
             plt.figure(0)
             plt.savefig(os.sep.join([plot_path1, self.filename + '.png']))
+            plt.clf()
             plt.figure(1)
             plt.savefig(os.sep.join([plot_path2, self.filename + '.png']))
+            plt.clf()
             if self.contain_raw_file:
                 raw_file_path1 = os.sep.join([self.output_path, 'along_time', 'tables'])
                 raw_file_path2 = os.sep.join([self.output_path, 'along_trace', 'tables'])
@@ -185,8 +187,10 @@ class SingleVectorPlotOutputMethod(OutputMethod):
                 os.makedirs(plot_path2)
             plt.figure(0)
             plt.savefig(os.sep.join([plot_path1, self.filename + '.png']))
+            plt.clf()
             plt.figure(1)
             plt.savefig(os.sep.join([plot_path2, self.filename + '.png']))
+            plt.clf()
             if self.contain_raw_file:
                 raw_file_path1 = os.sep.join([self.output_path, 'along_time', 'tables'])
                 raw_file_path2 = os.sep.join([self.output_path, 'along_trace', 'tables'])
@@ -263,6 +267,7 @@ class SingleOnePlotOutputMethod(OutputMethod):
             if not os.path.exists(plot_path):
                 os.makedirs(plot_path)
             plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
+            plt.clf()
 
             if self.contain_raw_file:
                 raw_file_path1 = os.sep.join([self.output_path, 'one_result', 'tables'])
@@ -328,7 +333,6 @@ class MultipleMatrixPlotsOutputMethod(OutputMethod):
                     np.concatenate((self.along_trace_results, optima), axis=1)
 
     def _finalize(self):
-
         if self.output_path:
             plot_path1 = os.sep.join([self.output_path, 'along_time', 'plot'])
             plot_path2 = os.sep.join([self.output_path, 'along_trace', 'plot'])
@@ -374,6 +378,7 @@ class MultipleMatrixPlotsOutputMethod(OutputMethod):
                     else:
                         axs[j].plot(results[j])
             fig.savefig(os.sep.join([eval('plot_path' + str(i + 1)), self.filename + '.png']))
+            fig.clf()
             if self.display:
                 fig.show()
 
@@ -414,7 +419,6 @@ class NonIncrementalOutputMethod(OutputMethod):
             self.results = results
 
     def _finalize(self):
-        plt.clf()
         plt.figure(0)
         plt.title(self.figure_params['title'])
         plt.xlabel(self.figure_params['x_label'])
@@ -431,6 +435,7 @@ class NonIncrementalOutputMethod(OutputMethod):
             if not os.path.exists(plot_path):
                 os.makedirs(plot_path)
             plt.savefig(os.sep.join([plot_path, self.filename + '.png']))
+            plt.clf()
 
             if self.contain_raw_file:
                 raw_file_path = os.sep.join([self.output_path, 'tables'])
