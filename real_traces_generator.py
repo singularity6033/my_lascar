@@ -1,24 +1,32 @@
-from configs.simulation_configs import normal_simulated_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, TraceBatchContainer
-
-container = SimulatedPowerTraceContainer(config_params=normal_simulated_traces)
-
-# we simulate the process of generating real traces by simulated traces
-real_leakages = container[:container.number_of_traces].leakages
-real_values = container[:container.number_of_traces].values
-idx_exp = container.idx_exp
-attack_sample_point = container.attack_sample_point
+import numpy as np
+from Lib_SCA.hdf5_files_import import read_hdf5_proj
+from Lib_SCA.lascar import TraceBatchContainer
 
 
-def real_trace_generator(leakages=real_leakages,
-                         values=real_values,
-                         ie=idx_exp,
-                         asp=attack_sample_point):
-    """
-    sample of real traces for attack
-    """
-    real_container = TraceBatchContainer(leakages, values)
-    real_container.idx_exp = [ie]
-    real_container.attack_sample_point = asp
+def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
+    traces, plaintexts, ciphertexts = read_hdf5_proj(database_file=dataset_path,
+                                                     idx_srt=0+offset,
+                                                     idx_end=num_traces+offset,
+                                                     start=t_start,
+                                                     end=t_end,
+                                                     load_trace=True,
+                                                     load_plaintext=True,
+                                                     load_ciphertext=True)
 
-    return real_container
+    # construct leakages and values
+    leakages = traces
+
+    value_dtype = np.dtype([('plaintexts', np.uint8, plaintexts[0, :].shape),
+                            ('ciphertexts', np.uint8, ciphertexts[0, :].shape),
+                            ('trace_idx', np.uint8, ())])
+    values = None
+    for i in range(num_traces):
+        value = np.zeros((), dtype=value_dtype)
+        value['trace_idx'] = i
+        value['plaintexts'] = plaintexts[i, :]
+        value['ciphertexts'] = ciphertexts[i, :]
+        values = value if i == 0 else np.hstack([values, value])
+
+    container = TraceBatchContainer(leakages, values)
+
+    return container

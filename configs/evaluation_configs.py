@@ -3,17 +3,19 @@ t-test
 """
 t_test_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+    'mode': 'real',  # or real
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',  # used in 'real' mode
 
     # engine name (trivial)
     'engine_name': 'ttest',
 
     # batch size
-    'batch_size': 50000,
+    'batch_size': 500,
 
     # plotting params
-    'figure_params_along_time': {'title': 't-test_result', 'x_label': 'time', 'y_label': 't-score'},
-    'figure_params_along_trace': {'title': 't-test_result', 'x_label': 'trace_no', 'y_label': 't-score'}
+    'figure_params_along_time': {'title': 't-test_result', 'x_label': 'time', 'y_label': 'p-value'},
+    'figure_params_along_trace': {'title': 't-test_result', 'x_label': 'trace_no', 'y_label': 'p-value'}
 }
 
 """

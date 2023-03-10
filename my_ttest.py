@@ -16,16 +16,18 @@ from configs.simulation_configs import fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer, TraceBatchContainer
 from Lib_SCA.lascar import SingleVectorPlotOutputMethod
 from Lib_SCA.lascar import Session, TTestEngine
+from real_traces_generator import real_trace_container
 
 
-# from real_traces_generator import real_trace_generator
-
-
-def tt_test(params, output_path, cont):
-    container = cont
-
-    # if params['mode'] == 'fix_random':
-    #     container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+def tt_test(params, trace_params, output_path):
+    container = None
+    if params['mode'] == 'fix_random':
+        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+    elif params['mode'] == 'real':
+        container = real_trace_container(dataset_path=params['dataset_path'],
+                                         num_traces=1000,
+                                         t_start=0,
+                                         t_end=1262)
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace
@@ -62,26 +64,7 @@ def tt_test(params, output_path, cont):
 
 
 if __name__ == '__main__':
-    proj_path = '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx'
-    num_trcs = 1000
-    pnt_srt = 0
-    pnt_end = 1262
-    traces, plts, cpts = read_hdf5_proj(database_file=proj_path, idx_srt=0, idx_end=num_trcs, start=pnt_srt,
-                                        end=pnt_end,
-                                        load_trcs=True, load_plts=True, load_cpts=True)
-
-    leakages = traces
-    dtype = np.dtype([('trace_idx', np.uint8, ())])
-    for i in range(1000):
-        value = np.zeros((), dtype=dtype)
-        value['trace_idx'] = i
-        if i == 0:
-            values = value
-        else:
-            values = np.hstack([values, value])
-
-    real_container = TraceBatchContainer(leakages, values)
-    tt_test(t_test_config, output_path='./results/t-test', cont=real_container)
+    tt_test(t_test_config, None, output_path='./results/t-test')
     # gt_params = t_test_config
     # trace_info = fixed_random_traces
     # # json config file generation
