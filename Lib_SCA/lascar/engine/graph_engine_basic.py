@@ -6,28 +6,40 @@ from PyAstronomy import pyaC
 
 class Phase_Space_Reconstruction_Graph:
     """
-    constructing 2-d graphs from 1-d time series with each vector point of the reconstructed phase space represented
-    by a single node and edge determined by the phase space distance
-    in the phase space reconstruction method, a phase space trajectory can be reconstructed from a time series by time
-    delay embedding, and each time delayed series (vectors) generated from the original time series can represent one
-    possible state (or phase) of the system
+        constructing 2-d graphs from 1-d time series with each vector point of the reconstructed phase space represented
+        by a single node and edge determined by the phase space distance
+        in the phase space reconstruction method, a phase space trajectory can be reconstructed from a time series by time
+        delay embedding, and each time delayed series (vectors) generated from the original time series can represent one
+        possible state (or phase) of the system
 
-    original paper:
-    Gao, Zhongke, and Ningde Jin. "Complex network from time series based on phase space reconstruction."
-    Chaos: An Interdisciplinary Journal of Nonlinear Science 19.3 (2009): 033137.
+        original paper:
+        Gao, Zhongke, and Ningde Jin. "Complex network from time series based on phase space reconstruction."
+        Chaos: An Interdisciplinary Journal of Nonlinear Science 19.3 (2009): 033137.
     """
-
-    def __init__(self, time_series, time_delay, dim, sampling_interval=1, to_unweighted=True):
+    def __init__(self,
+                 time_series,
+                 time_delay,
+                 dim,
+                 sampling_interval=1,
+                 max_dim=10,
+                 mode='auto',
+                 measurement='corr'):
         """
-        Phase_Space_Reconstruction_Graph
-        :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
-        :param time_delay: delayed time interval used in phase space reconstruction
-        :param dim: the dimension of embedding delayed time series (vectors)
-        :param sampling_interval: used to sample the delayed time series, default is 1
-        :params to_unweighted: whether or not convert to unweighted graphs
-        :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
-                                vectors in the reconstructed phase space
-        :param adj_matrix: resulting adjacent matrix of the generated graph
+            Phase_Space_Reconstruction_Graph
+            :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
+            :param time_delay: delayed time interval used in phase space reconstruction
+            :param dim: the dimension of embedding delayed time series (vectors)
+            :param max_dim: upper dimension bound used in false nearest neighbors method
+            :param sampling_interval: used to sample the delayed time series, default is 1
+            :param mode: 'fixed' -> use pre-defined delayed time step and embedded dimension in PSRG; 'auto' -> use c-c method
+                         and fnn method to determine the best value for delayed time step and embedded dimension automatically
+            :param measurement: different measurements to calculate connectivity among nodes (embedded vectors); 'dist' ->
+                                2-norm, 'corr' -> pearson correlation coefficient
+
+            :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
+                                    vectors in the reconstructed phase space
+            :param adj_matrix: resulting adjacent matrix of the generated graph (weighted)
+            :param w_to_unw_thresholds: thresholds to convert weighted graphs to unweighted graphs
         """
         self.time_series = time_series
         self.number_of_time_series = self.time_series.shape[0]
@@ -36,32 +48,40 @@ class Phase_Space_Reconstruction_Graph:
         self.time_delay = time_delay
         self.dim = dim
         self.sampling_interval = sampling_interval
-        self.to_unweighted = to_unweighted
+        self.max_dim = max_dim
+
+        self.mode = mode
+        self.measurement = measurement
 
         self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
-        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes), dtype=np.float64)
-        # max_dim = self.number_of_time_points // self.time_delay + 1
-        # xxx = self._false_nearest_neighbor(self.time_series[0, :], self.time_delay, max_dim)
+        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
+                                   dtype=np.float64)
+        self.w_to_unw_thresholds = list()
 
-    @staticmethod
-    def _calc_euclidean_distances(a, b):
-        abt = np.dot(a, b.T)
-        a2 = np.array(np.sum(a ** 2, axis=1), ndmin=2).T.repeat(abt.shape[1], axis=1)
-        b2 = np.array(np.sum(b ** 2, axis=1), ndmin=2).repeat(abt.shape[0], axis=0)
-        tmp = a2 + b2 - 2 * abt
-        tmp[tmp <= 1e-9] = 1e-9
-        res = np.sqrt(tmp)
-        res[np.diag_indices_from(res)] = 0
-        return np.nan_to_num(res)
+    def generate(self):
+        """
+        the time delayed embedding process
+        """
+        for i in tqdm(range(self.number_of_time_series)):
+            if self.mode == 'auto':
+                self.time_delay = self._c_c_method(self.time_series[i, :])
+                self.dim = self._false_nearest_neighbor(self.time_series[i, :], self.time_delay, self.max_dim)
+                self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
+                self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes), dtype=np.float64)
 
-    @staticmethod
-    def _calc_sup_norm(a, b, m):
-        res = []
-        for i in range(m):
-            for j in range(m):
-                if i < j:
-                    res.append(np.max(np.abs(a[i, :] - b[i, :])))
-        return res
+            vector_list = self._psr_single_series(self.time_series[i, :], self.dim, self.time_delay)
+            print(self.number_of_nodes)
+
+            weighted_adj = np.zeros((self.number_of_nodes, self.number_of_nodes))
+            if self.measurement == 'corr':
+                weighted_adj = self._calc_correlation_matrix(vector_list, vector_list)
+            elif self.measurement == 'dist':
+                weighted_adj = self._calc_euclidean_distances(vector_list, vector_list)
+            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
+            self.adj_matrix[i, :, :] = weighted_adj_new
+
+            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new)
+            self.w_to_unw_thresholds.append(w_to_unw_threshold)
 
     def _psr_single_series(self, one_series, dim, time_delay):
         n = one_series.shape[0]
@@ -93,6 +113,7 @@ class Phase_Space_Reconstruction_Graph:
                     sup_norm_res = np.array(self._calc_sup_norm(y, y))
                     sum_sup_norm_res = np.sum(np.heaviside(rj - sup_norm_res, 1.0))
                     c = sum_sup_norm_res / ((space_points - 1) * space_points)
+                    c = np.nan_to_num(c, nan=1.0)
                     tmp[dim_i][j] = c
             res[t_i] = np.sum(tmp)
 
@@ -111,8 +132,8 @@ class Phase_Space_Reconstruction_Graph:
         """
         n = one_series.shape[0]
         Ra = np.std(one_series)
-        fnn = np.zeros(max_dim)
-        for dim in range(1, max_dim + 1):
+        fnn = np.ones(max_dim)
+        for dim in range(2, max_dim + 1):
             space_points = n - (dim - 1) * time_delay // self.sampling_interval
             y = self._psr_single_series(one_series, dim, time_delay)
             count = 0
@@ -129,103 +150,7 @@ class Phase_Space_Reconstruction_Graph:
             fnn[dim - 1] = fnn[dim - 1] / count if count else 1
             if not fnn[dim - 1]:
                 return dim
-        return np.argmin(fnn) + 1
-
-    def generate(self):
-        """
-        the time delayed embedding process
-        """
-        for i in range(self.number_of_time_series):
-            tmp = np.zeros((self.number_of_nodes, self.dim))
-            for j in range(self.number_of_nodes):
-                tmp[j, :] = self.time_series[i, j:j + (self.dim - 1) * self.time_delay + 1:self.time_delay]
-            weighted_adj = self._calc_euclidean_distances(tmp, tmp)
-            self.adj_matrix[i, :, :] = self._convert_to_unweighted_graphs(weighted_adj) if self.to_unweighted else weighted_adj
-
-    def _convert_to_unweighted_graphs(self, g):
-        """
-        inputs: one adjacent matrix of weighted graph
-        using the graph density to choose the optimal threshold
-        for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
-        m-number of edges; n-number of nodes
-        """
-        potential_threshold = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
-        best_g = 0
-        prev_density = 0
-        best_diff = float('-inf')
-        for i, threshold in enumerate(potential_threshold):
-            tmp = np.copy(g)
-            idx_0 = tmp > threshold
-            idx_1 = tmp <= threshold
-            tmp[idx_0], tmp[idx_1] = 0, 1
-            tmp[np.diag_indices_from(tmp)] = 0
-            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
-            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
-            cur_diff = 0 if i == 0 else (curr_density - prev_density)
-            if cur_diff > best_diff:
-                best_diff = cur_diff
-                best_g = tmp
-            prev_density = curr_density
-        return best_g
-
-
-class Simple_PSRG:
-    """
-       simplified version of Phase_Space_Reconstruction_Graph, no optimization, no distance but correlation
-    """
-
-    def __init__(self, time_series, time_delay, dim, sampling_interval=1, to_unweighted=True):
-        """
-        Phase_Space_Reconstruction_Graph
-        :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
-        :param time_delay: delayed time interval used in phase space reconstruction
-        :param dim: the dimension of embedding delayed time series (vectors)
-        :param sampling_interval: used to sample the delayed time series, default is 1
-        :params to_unweighted: whether or not convert to unweighted graphs
-        :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
-                                vectors in the reconstructed phase space
-        :param adj_matrix: resulting adjacent matrix of the generated graph
-        """
-        self.time_series = time_series
-        self.number_of_time_series = self.time_series.shape[0]
-        self.number_of_time_points = self.time_series.shape[1]
-
-        self.time_delay = time_delay
-        self.dim = dim
-        self.sampling_interval = sampling_interval
-        self.to_unweighted = to_unweighted
-
-        self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
-        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
-                                   dtype=np.float64)
-        self.w_to_unw_thresholds = list()
-
-    @staticmethod
-    def _calc_correlation_matrix(a, b):
-        num_of_vec = a.shape[0]
-        res = np.zeros((num_of_vec, num_of_vec))
-        for i in range(num_of_vec):
-            for j in range(num_of_vec):
-                if i <= j:
-                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
-                    res[j, i] = res[i, j]
-                else:
-                    continue
-        return np.abs(res)
-
-    def generate(self):
-        """
-        the time delayed embedding process
-        """
-        for i in range(self.number_of_time_series):
-            tmp = np.zeros((self.number_of_nodes, self.dim))
-            for j in range(self.number_of_nodes):
-                tmp[j, :] = self.time_series[i, j:j + (self.dim - 1) * self.time_delay + 1:self.time_delay]
-            weighted_adj = self._calc_correlation_matrix(tmp, tmp)
-            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
-            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new)
-            self.adj_matrix[i, :, :] = weighted_adj_new
-            self.w_to_unw_thresholds.append(w_to_unw_threshold)
+        return np.argmin(fnn[1:]) + 2
 
     def _calc_best_conversion_threshold(self, g):
         """
@@ -253,33 +178,39 @@ class Simple_PSRG:
             prev_density = curr_density
         return best_threshold
 
-    def _convert_to_unweighted_graphs(self, g):
-        """
-        inputs: one adjacent matrix of weighted graph
-        using the graph density to choose the optimal threshold
-        for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
-        m-number of edges; n-number of nodes
-        """
-        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
-        best_g = g
-        best_threshold = potential_thresholds[0]
-        prev_density = 0
-        best_diff = float('-inf')
-        for i, threshold in enumerate(potential_thresholds):
-            tmp = np.copy(g)
-            idx_0 = tmp > threshold
-            idx_1 = tmp <= threshold
-            tmp[idx_0], tmp[idx_1] = 0, 1
-            tmp[np.diag_indices_from(tmp)] = 0
-            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
-            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
-            cur_diff = 0 if i == 0 else (curr_density - prev_density)
-            if cur_diff > best_diff:
-                best_diff = cur_diff
-                best_g = tmp
-                best_threshold = threshold
-            prev_density = curr_density
-        return best_g, best_threshold
+    @staticmethod
+    def _calc_correlation_matrix(a, b):
+        num_of_vec = a.shape[0]
+        res = np.zeros((num_of_vec, num_of_vec))
+        for i in range(num_of_vec):
+            for j in range(num_of_vec):
+                if i <= j:
+                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
+                    res[j, i] = res[i, j]
+                else:
+                    continue
+        return np.abs(res)
+
+    @staticmethod
+    def _calc_euclidean_distances(a, b):
+        abt = np.dot(a, b.T)
+        a2 = np.array(np.sum(a ** 2, axis=1), ndmin=2).T.repeat(abt.shape[1], axis=1)
+        b2 = np.array(np.sum(b ** 2, axis=1), ndmin=2).repeat(abt.shape[0], axis=0)
+        tmp = a2 + b2 - 2 * abt
+        tmp[tmp <= 1e-9] = 1e-9
+        res = np.sqrt(tmp)
+        res[np.diag_indices_from(res)] = 0
+        return np.nan_to_num(res)
+
+    @staticmethod
+    def _calc_sup_norm(a, b):
+        res = []
+        m = min(a.shape[0], b.shape[0])
+        for i in range(m):
+            for j in range(m):
+                if i < j:
+                    res.append(np.max(np.abs(a[i, :] - b[i, :])))
+        return res
 
 
 class Generalised_RDPG:

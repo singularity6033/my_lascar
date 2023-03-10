@@ -64,7 +64,7 @@ cmi_config = {
     'figure_params_along_trace': {'title': ['cmi+mi', 'cmi+pv'], 'x_label': ['trace_batch', 'trace_batch'], 'y_label': ['mi', 'pv']}
 }
 
-"""
+""" 
 graph-based test
 """
 graph_test_config = {
@@ -116,8 +116,8 @@ graph_distance_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'fix_random',
 
-    'distance_type': 'deltacon0',
-    'test_type': 'z-test',
+    'distance_type': 'lambda_dist',
+    'num_bins': 50,
 
     # engine name (trivial)
     'engine_name': 'graph_distance',
@@ -127,6 +127,23 @@ graph_distance_config = {
 
     # plotting params
     'figure_params': {'title': 'graph_distance_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+}
+
+graph_distance_trace_based_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'fix_random',
+
+    'distance_type': 'lambda_dist',
+    'num_bins': 50,
+
+    # engine name (trivial)
+    'engine_name': 'graph_distance_trace_based',
+
+    # batch size
+    'batch_size': 50,
+
+    # plotting params
+    'figure_params': {'title': 'graph_distance_trace_based_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
 
 graph_distance_attack_config = {
