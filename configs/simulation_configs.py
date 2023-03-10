@@ -3,12 +3,12 @@ configs for normal_simulated_traces
 """
 normal_simulated_traces = {
     # total number of traces
-    'number_of_traces': 5000,
+    'number_of_traces': 20000,
     # total number of bytes for each time sample in one trace
     'number_of_bytes': 1,
 
     # total number of time sample points one trace has
-    'number_of_time_samples': 10,
+    'number_of_time_samples': 2000,
 
     # position (index) of time sample point we presumptively attack
     'attack_sample_point': 0,
@@ -71,17 +71,17 @@ configs for fixed_random_traces
 """
 fixed_random_traces = {
     # total number of traces
-    'number_of_traces': 50000,
+    'number_of_traces': 10000,
     # total number of bytes for each time sample in one trace
     'number_of_bytes': 1,
 
     # number_of_bytes * number_of_time_samples
     # give a list of plaintext for corresponding bytes
     # assume each byte has the same ciphertext along the time axis
-    'fixed_set': [1],
+    'fixed_set': [6],
 
     # total number of time sample points one trace has
-    'number_of_time_samples': 10,
+    'number_of_time_samples': 50,
 
     # position (index) of time sample point we presumptively attack
     'attack_sample_point': 0,

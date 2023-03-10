@@ -33,6 +33,7 @@ from .simulation_container import BasicAesSimulationContainer
 from .simulation_container import AesSimulationContainer
 from .simulation_container import SimulatedPowerTraceContainer
 from .simulation_container import SimulatedPowerTraceFixedRandomContainer
+from .simulation_container import SimulatedPowerTraceContainerWithPlaintext
 from .container import Trace
 
 from .npy_container import NpyContainer

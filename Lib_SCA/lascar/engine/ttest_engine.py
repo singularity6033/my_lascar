@@ -18,6 +18,7 @@
 
 import numpy as np
 import itertools
+from scipy.stats import t
 from . import PartitionerEngine
 
 
@@ -51,13 +52,22 @@ class TTestEngine(PartitionerEngine):
         v0 = (self._acc_x_by_partition[1, 0] / self._partition_count[0]) - m0 ** 2
         v1 = (self._acc_x_by_partition[1, 1] / self._partition_count[1]) - m1 ** 2
 
-        return np.nan_to_num(
+        welch_df = (v0 / self._partition_count[0] + v1 / self._partition_count[1]) ** 2 /\
+                   ((v0 / self._partition_count[0]) ** 2 / (self._partition_count[0] - 1) +
+                    (v1 / self._partition_count[1]) ** 2 / (self._partition_count[1] - 1))
+
+        t_score = np.nan_to_num(
             (m0 - m1)
             / np.sqrt(
                 (v0 / self._partition_count[0]) + (v1 / self._partition_count[1])
             ),
             False,
         )
+
+        # two-tails t test
+        p_value = t.sf(abs(t_score), df=welch_df) * 2
+
+        return p_value
 
 
 def compute_ttest(*containers, batch_size=100):

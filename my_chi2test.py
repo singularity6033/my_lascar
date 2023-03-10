@@ -62,7 +62,7 @@ if __name__ == '__main__':
     gt_params = chi2_test_config
     trace_info = fixed_random_traces
     # json config file generation
-    json_config = JSONConfig('chi2test_v4')
+    json_config = JSONConfig('chi2test_v6')
     # 500k
     # for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
     #     for m_masking_bytes in range(10):
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
     #         json_config.generate_config(trace_info)
 
-    for m_number_of_traces in [5000, 100000, 250000, 500000]:
-        for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
+    for m_number_of_traces in [50000, 100000, 250000, 350000]:
+        for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
             for m_masking_bytes in range(10):
                 trace_info['number_of_traces'] = m_number_of_traces
                 trace_info['noise_sigma_el'] = m_noise_sigma_el
@@ -87,4 +87,4 @@ if __name__ == '__main__':
     dict_list = json_config.get_config()
     for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        chi2_test(gt_params, dict_i, output_path='./results/chi2test_v4/' + dict_i['_id'])
+        chi2_test(gt_params, dict_i, output_path='./results/chi2test_v6/' + dict_i['_id'])
