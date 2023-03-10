@@ -5,13 +5,15 @@ The characterisation is made with the TTestEngine
 Its constructor needs a partition function, which will separate leakages into two classes.
 
 """
+import numpy as np
 from scipy.stats import ttest_ind
 from tqdm import tqdm
 
 from Lib_SCA.config_extractor import JSONConfig
+from Lib_SCA.hdf5_files_import import read_hdf5_proj
 from configs.evaluation_configs import t_test_config
 from configs.simulation_configs import fixed_random_traces
-from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer, TraceBatchContainer
 from Lib_SCA.lascar import SingleVectorPlotOutputMethod
 from Lib_SCA.lascar import Session, TTestEngine
 
@@ -19,10 +21,11 @@ from Lib_SCA.lascar import Session, TTestEngine
 # from real_traces_generator import real_trace_generator
 
 
-def tt_test(params, trace_params, output_path):
-    container = None
-    if params['mode'] == 'fix_random':
-        container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+def tt_test(params, output_path, cont):
+    container = cont
+
+    # if params['mode'] == 'fix_random':
+    #     container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace
@@ -59,12 +62,30 @@ def tt_test(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    # tt_test(t_test_config, fixed_random_traces, output_path='./results/t-test')
+    proj_path = '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx'
+    num_trcs = 1000
+    pnt_srt = 0
+    pnt_end = 1262
+    traces, plts, cpts = read_hdf5_proj(database_file=proj_path, idx_srt=0, idx_end=num_trcs, start=pnt_srt,
+                                        end=pnt_end,
+                                        load_trcs=True, load_plts=True, load_cpts=True)
 
-    gt_params = t_test_config
-    trace_info = fixed_random_traces
-    # json config file generation
-    json_config = JSONConfig('ttest_v6')
+    leakages = traces
+    dtype = np.dtype([('trace_idx', np.uint8, ())])
+    for i in range(1000):
+        value = np.zeros((), dtype=dtype)
+        value['trace_idx'] = i
+        if i == 0:
+            values = value
+        else:
+            values = np.hstack([values, value])
+
+    real_container = TraceBatchContainer(leakages, values)
+    tt_test(t_test_config, output_path='./results/t-test', cont=real_container)
+    # gt_params = t_test_config
+    # trace_info = fixed_random_traces
+    # # json config file generation
+    # json_config = JSONConfig('ttest_v6')
     # 500k
     # for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
     #     for m_masking_bytes in range(10):
@@ -73,19 +94,19 @@ if __name__ == '__main__':
     #         trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
     #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
     #         json_config.generate_config(trace_info)
-    for m_number_of_traces in [50000, 100000, 250000, 350000]:
-        for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
-            for m_masking_bytes in range(10):
-                trace_info['number_of_traces'] = m_number_of_traces
-                trace_info['noise_sigma_el'] = m_noise_sigma_el
-                trace_info['number_of_masking_bytes'] = m_masking_bytes
-                trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
-                                    '_#mask_' + str(m_masking_bytes) + \
-                                    '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                json_config.generate_config(trace_info)
+    # for m_number_of_traces in [50000, 100000, 250000, 350000]:
+    #     for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
+    #         for m_masking_bytes in range(10):
+    #             trace_info['number_of_traces'] = m_number_of_traces
+    #             trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #             trace_info['number_of_masking_bytes'] = m_masking_bytes
+    #             trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
+    #                                 '_#mask_' + str(m_masking_bytes) + \
+    #                                 '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #             json_config.generate_config(trace_info)
 
     # get json config file
-    dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list)):
-        print('[INFO] Processing #', i)
-        tt_test(gt_params, dict_i, output_path='./results/ttest_v6/' + dict_i['_id'])
+    # dict_list = json_config.get_config()
+    # for i, dict_i in tqdm(enumerate(dict_list)):
+    #     print('[INFO] Processing #', i)
+    #     tt_test(gt_params, dict_i, output_path='./results/ttest_v6/' + dict_i['_id'])
