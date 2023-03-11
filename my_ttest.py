@@ -25,7 +25,7 @@ def tt_test(params, trace_params, output_path):
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
         container = real_trace_container(dataset_path=params['dataset_path'],
-                                         num_traces=1000,
+                                         num_traces=2000000,
                                          t_start=0,
                                          t_end=1262)
 
@@ -64,7 +64,7 @@ def tt_test(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    tt_test(t_test_config, None, output_path='./results/t-test')
+    tt_test(t_test_config, fixed_random_traces, output_path='./results/t-test')
     # gt_params = t_test_config
     # trace_info = fixed_random_traces
     # # json config file generation

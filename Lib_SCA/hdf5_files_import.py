@@ -30,17 +30,15 @@ def read_hdf5_proj(database_file,
         print("Error: can't open HDF5 file '%s' for reading (it might be malformed) ..." % database_file)
         sys.exit(-1)
     traces = []
-    idx = np.arange(idx_srt, idx_end, dtype=np.uint32)
-    idx = idx.tolist()
     if load_trace:
-        traces = np.array(in_file[ProjectDataSetTags.TRACES.value][idx, start:end]).astype('float64')
+        traces = np.array(in_file[ProjectDataSetTags.TRACES.value][idx_srt:idx_end, start:end]).astype('float64')
 
     if load_plaintext and load_ciphertext:
-        return traces, in_file[ProjectDataSetTags.PLAIN_TEXT.value][idx], in_file[ProjectDataSetTags.CIPHER_TEXT.value][
-            idx]
+        return traces, in_file[ProjectDataSetTags.PLAIN_TEXT.value][idx_srt:idx_end], in_file[ProjectDataSetTags.CIPHER_TEXT.value][
+            idx_srt:idx_end]
     elif load_plaintext and not load_ciphertext:
-        return traces, in_file[ProjectDataSetTags.PLAIN_TEXT.value][idx]
+        return traces, in_file[ProjectDataSetTags.PLAIN_TEXT.value][idx_srt:idx_end]
     elif not load_plaintext and load_ciphertext:
-        return traces, in_file[ProjectDataSetTags.CIPHER_TEXT.value][idx]
+        return traces, in_file[ProjectDataSetTags.CIPHER_TEXT.value][idx_srt:idx_end]
     else:
         return traces

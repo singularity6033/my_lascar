@@ -1,6 +1,7 @@
 import numpy as np
 from Lib_SCA.hdf5_files_import import read_hdf5_proj
 from Lib_SCA.lascar import TraceBatchContainer
+from tqdm import tqdm
 
 
 def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
@@ -19,13 +20,18 @@ def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
     value_dtype = np.dtype([('plaintexts', np.uint8, plaintexts[0, :].shape),
                             ('ciphertexts', np.uint8, ciphertexts[0, :].shape),
                             ('trace_idx', np.uint8, ())])
-    values = None
-    for i in range(num_traces):
-        value = np.zeros((), dtype=value_dtype)
+    value = np.zeros((), dtype=value_dtype)
+
+    values_dtype = np.dtype((value_dtype, (num_traces, )))
+    values = np.zeros((), dtype=values_dtype)
+
+    print("[INFO] dataset loading...")
+    for i in tqdm(range(num_traces)):
         value['trace_idx'] = i
         value['plaintexts'] = plaintexts[i, :]
         value['ciphertexts'] = ciphertexts[i, :]
-        values = value if i == 0 else np.hstack([values, value])
+        values[i] = value
+        # values = value if i == 0 else np.hstack([tmp, value])  # this way is too time consuming
 
     container = TraceBatchContainer(leakages, values)
 
