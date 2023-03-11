@@ -89,7 +89,7 @@ class CMI_Engine_By_Histogram(GuessEngine):
         min_data, max_data = min(counter_dic.keys()), max(counter_dic.keys())
         new_hist, new_bin_edges = self._update_histogram_range(prev_hist, min_data, max_data)
         for data_i in cur_data:
-            index = bisect_left(new_bin_edges, data_i)
+            index = bisect_left(new_bin_edges, data_i)  # boundary value belongs to previous bin
             if not index == 0:
                 index -= 1
             new_hist[index] += 1

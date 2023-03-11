@@ -24,10 +24,10 @@ def tt_test(params, trace_params, output_path):
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
-        container = real_trace_container(dataset_path=params['dataset_path'],
-                                         num_traces=2000000,
-                                         t_start=0,
-                                         t_end=1262)
+        container, _ = real_trace_container(dataset_path=params['dataset_path'],
+                                            num_traces=2000000,
+                                            t_start=0,
+                                            t_end=1262)
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace

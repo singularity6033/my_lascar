@@ -6,7 +6,7 @@ from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp, p
 from sklearn.cluster import KMeans
 from TracyWidom import TracyWidom
 
-from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph
+from . import PartitionerEngine, GuessEngine, Phase_Space_Reconstruction_Graph, Amplitudes_Based_Graph
 
 
 class GraphTestEngine(PartitionerEngine):
@@ -57,6 +57,9 @@ class GraphTestEngine(PartitionerEngine):
         p_value = -1.0
         random_set, fixed_set = self._samples_by_partition[0], self._samples_by_partition[1]
         m_r, m_f = self._partition_count[0], self._partition_count[1]
+
+        x = Amplitudes_Based_Graph(random_set)
+        x.generate()
 
         # convert 1-d time series into 2-d graphs by phase space reconstruction
         init_graph_r = Phase_Space_Reconstruction_Graph(random_set, self.time_delay, self.dim, self.sampling_interval)

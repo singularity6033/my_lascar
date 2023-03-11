@@ -1,10 +1,69 @@
+import collections
+from bisect import bisect_left
+
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import norm, bernoulli, pearsonr
+from scipy.stats import norm, bernoulli, pearsonr, moment
 from PyAstronomy import pyaC
 
 
-class Phase_Space_Reconstruction_Graph:
+class Base_Graph:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _calc_correlation_matrix(a, b):
+        num_of_vec = a.shape[0]
+        res = np.zeros((num_of_vec, num_of_vec))
+        for i in range(num_of_vec):
+            for j in range(num_of_vec):
+                if i <= j:
+                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
+                    res[j, i] = res[i, j]
+                else:
+                    continue
+        return np.abs(res)
+
+    @staticmethod
+    def _calc_euclidean_distances(a, b):
+        abt = np.dot(a, b.T)
+        a2 = np.array(np.sum(a ** 2, axis=1), ndmin=2).T.repeat(abt.shape[1], axis=1)
+        b2 = np.array(np.sum(b ** 2, axis=1), ndmin=2).repeat(abt.shape[0], axis=0)
+        tmp = a2 + b2 - 2 * abt
+        tmp[tmp <= 1e-9] = 1e-9
+        res = np.sqrt(tmp)
+        res[np.diag_indices_from(res)] = 0
+        return np.nan_to_num(res)
+
+    @staticmethod
+    def _calc_best_conversion_threshold(g, num_of_nodes):
+        """
+            inputs: one adjacent matrix of weighted graph
+            using the graph density to choose the optimal threshold
+            for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
+            m-number of edges; n-number of nodes
+        """
+        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
+        best_threshold = g[0][0]
+        prev_density = 0
+        best_diff = float('-inf')
+        for i, threshold in enumerate(potential_thresholds):
+            tmp = np.copy(g)
+            idx_0 = tmp > threshold
+            idx_1 = tmp <= threshold
+            tmp[idx_0], tmp[idx_1] = 0, 1
+            tmp[np.diag_indices_from(tmp)] = 0
+            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
+            curr_density = (2 * num_edges) / (num_of_nodes * (num_of_nodes - 1))
+            cur_diff = 0 if i == 0 else (curr_density - prev_density)
+            if cur_diff > best_diff:
+                best_diff = cur_diff
+                best_threshold = threshold
+            prev_density = curr_density
+        return best_threshold
+
+
+class Phase_Space_Reconstruction_Graph(Base_Graph):
     """
         constructing 2-d graphs from 1-d time series with each vector point of the reconstructed phase space represented
         by a single node and edge determined by the phase space distance
@@ -16,6 +75,7 @@ class Phase_Space_Reconstruction_Graph:
         Gao, Zhongke, and Ningde Jin. "Complex network from time series based on phase space reconstruction."
         Chaos: An Interdisciplinary Journal of Nonlinear Science 19.3 (2009): 033137.
     """
+
     def __init__(self,
                  time_series,
                  time_delay,
@@ -57,6 +117,7 @@ class Phase_Space_Reconstruction_Graph:
         self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
                                    dtype=np.float64)
         self.w_to_unw_thresholds = list()
+        Base_Graph.__init__(self)
 
     def generate(self):
         """
@@ -66,11 +127,13 @@ class Phase_Space_Reconstruction_Graph:
             if self.mode == 'auto':
                 self.time_delay = self._c_c_method(self.time_series[i, :])
                 self.dim = self._false_nearest_neighbor(self.time_series[i, :], self.time_delay, self.max_dim)
-                self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
-                self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes), dtype=np.float64)
+                self.number_of_nodes = self.number_of_time_points - (
+                        self.dim - 1) * self.time_delay // self.sampling_interval
+                self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
+                                           dtype=np.float64)
 
             vector_list = self._psr_single_series(self.time_series[i, :], self.dim, self.time_delay)
-            print(self.number_of_nodes)
+            # print(self.number_of_nodes)
 
             weighted_adj = np.zeros((self.number_of_nodes, self.number_of_nodes))
             if self.measurement == 'corr':
@@ -80,7 +143,7 @@ class Phase_Space_Reconstruction_Graph:
             weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
             self.adj_matrix[i, :, :] = weighted_adj_new
 
-            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new)
+            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new, self.number_of_nodes)
             self.w_to_unw_thresholds.append(w_to_unw_threshold)
 
     def _psr_single_series(self, one_series, dim, time_delay):
@@ -152,56 +215,6 @@ class Phase_Space_Reconstruction_Graph:
                 return dim
         return np.argmin(fnn[1:]) + 2
 
-    def _calc_best_conversion_threshold(self, g):
-        """
-            inputs: one adjacent matrix of weighted graph
-            using the graph density to choose the optimal threshold
-            for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
-            m-number of edges; n-number of nodes
-        """
-        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
-        best_threshold = g[0][0]
-        prev_density = 0
-        best_diff = float('-inf')
-        for i, threshold in enumerate(potential_thresholds):
-            tmp = np.copy(g)
-            idx_0 = tmp > threshold
-            idx_1 = tmp <= threshold
-            tmp[idx_0], tmp[idx_1] = 0, 1
-            tmp[np.diag_indices_from(tmp)] = 0
-            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
-            curr_density = (2 * num_edges) / (self.number_of_nodes * (self.number_of_nodes - 1))
-            cur_diff = 0 if i == 0 else (curr_density - prev_density)
-            if cur_diff > best_diff:
-                best_diff = cur_diff
-                best_threshold = threshold
-            prev_density = curr_density
-        return best_threshold
-
-    @staticmethod
-    def _calc_correlation_matrix(a, b):
-        num_of_vec = a.shape[0]
-        res = np.zeros((num_of_vec, num_of_vec))
-        for i in range(num_of_vec):
-            for j in range(num_of_vec):
-                if i <= j:
-                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
-                    res[j, i] = res[i, j]
-                else:
-                    continue
-        return np.abs(res)
-
-    @staticmethod
-    def _calc_euclidean_distances(a, b):
-        abt = np.dot(a, b.T)
-        a2 = np.array(np.sum(a ** 2, axis=1), ndmin=2).T.repeat(abt.shape[1], axis=1)
-        b2 = np.array(np.sum(b ** 2, axis=1), ndmin=2).repeat(abt.shape[0], axis=0)
-        tmp = a2 + b2 - 2 * abt
-        tmp[tmp <= 1e-9] = 1e-9
-        res = np.sqrt(tmp)
-        res[np.diag_indices_from(res)] = 0
-        return np.nan_to_num(res)
-
     @staticmethod
     def _calc_sup_norm(a, b):
         res = []
@@ -210,6 +223,99 @@ class Phase_Space_Reconstruction_Graph:
             for j in range(m):
                 if i < j:
                     res.append(np.max(np.abs(a[i, :] - b[i, :])))
+        return res
+
+
+class Amplitudes_Based_Graph(Base_Graph):
+    """
+        constructing 2-d graphs from 1-d time series by grouping amplitude of each time sample, different amplitude groups
+        will represent different nodes in the resulting graph, then we calculate moment vectors (contains k statistical moments)
+        for each amplitude group, and use similarity among those moment vectors to reflect the connectivity among nodes in
+        resulting group
+    """
+
+    def __init__(self,
+                 time_series,
+                 num_of_amp_groups=10,
+                 num_of_moments=4,
+                 measurement='corr'):
+        """
+            :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
+            :param num_of_amp_groups: number of divided amplitude groups (equally divided between min and max)
+            :params num_of_moments: number of the first moments used to construct moments vector
+            :param measurement: different measurements to calculate connectivity among nodes (similarity embedded vectors);
+                                'dist' -> 2-norm, 'corr' -> pearson correlation coefficient
+
+            :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
+                                    vectors in the reconstructed phase space
+            :param adj_matrix: resulting adjacent matrix of the generated graph (weighted)
+            :param w_to_unw_thresholds: thresholds to convert weighted graphs to unweighted graphs
+        """
+        self.time_series = time_series
+        self.number_of_time_series = self.time_series.shape[0]
+        self.number_of_time_points = self.time_series.shape[1]
+
+        self.number_of_nodes = num_of_amp_groups
+        self.num_of_moments = num_of_moments
+        self.measurement = measurement
+
+        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
+                                   dtype=np.float64)
+        self.w_to_unw_thresholds = list()
+        Base_Graph.__init__(self)
+
+    def generate(self):
+        """
+        the time delayed embedding process
+        """
+        for i in tqdm(range(self.number_of_time_series)):
+
+            amp_groups = self._amplitude_partition(self.time_series[i, :])
+            amp_moments = self._calc_moments(amp_groups)
+
+            weighted_adj = np.zeros((self.number_of_nodes, self.number_of_nodes))
+            if self.measurement == 'corr':
+                weighted_adj = self._calc_correlation_matrix(amp_moments, amp_moments)
+            elif self.measurement == 'dist':
+                weighted_adj = self._calc_euclidean_distances(amp_moments, amp_moments)
+            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
+            self.adj_matrix[i, :, :] = weighted_adj_new
+
+            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new, self.number_of_nodes)
+            self.w_to_unw_thresholds.append(w_to_unw_threshold)
+
+    def _amplitude_partition(self, one_series):
+        """
+        this functionality will return the resulting vectors (groups) after amplitude partition
+        """
+        res = collections.defaultdict(list)
+        min_amp, max_amp = np.min(one_series), np.max(one_series)
+        if min_amp == max_amp:
+            print('[INFO] cannot do amplitude partition !')
+            return
+        # one_series_normalized = (one_series - min_v) / (max_v - min_v)
+        step = (max_amp - min_amp) / self.number_of_nodes
+        levels = np.arange(min_amp, max_amp + step, step).tolist()
+        for amp in one_series:
+            index = bisect_left(levels, amp)  # boundary value belongs to previous bin
+            if not index == 0:
+                index -= 1
+            res[index].append(amp)
+        res = list(res.values())
+        return res
+
+    def _calc_moments(self, lists):
+        """
+        generate moments vector for each amplitude group
+        """
+        res = np.zeros((self.number_of_nodes, self.num_of_moments))
+        for i in range(len(lists)):
+            res[i, 0] = np.mean(lists[i])
+            for m in range(2, self.num_of_moments + 1):
+                res[i, m - 1] = moment(lists[i], moment=m)
+        min_res = np.min(res, axis=0)
+        max_res = np.max(res, axis=0)
+        res = (res - min_res) / (max_res - min_res)  # normalization
         return res
 
 

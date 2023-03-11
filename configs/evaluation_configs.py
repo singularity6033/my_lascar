@@ -5,7 +5,8 @@ t_test_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'real',  # or real
 
-    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',  # used in 'real' mode
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    # used in 'real' mode
 
     # engine name (trivial)
     'engine_name': 'ttest',
@@ -24,8 +25,10 @@ chi2-test
 chi2_test_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'real',
+    'bin_size': 1,
 
-    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',  # used in 'real' mode
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    # used in 'real' mode
 
     # engine name (trivial)
     'engine_name': 'chi2test',
@@ -44,6 +47,7 @@ continuous mutual information
 cmi_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'normal',
+    'bin_size': 1,
 
     # the total number of key guesses used in the cpa attack
     # the index of the correct key guess
@@ -65,7 +69,8 @@ cmi_config = {
 
     # plotting params
     'figure_params_along_time': {'title': ['cmi+mi', 'cmi+pv'], 'x_label': ['time', 'time'], 'y_label': ['mi', 'pv']},
-    'figure_params_along_trace': {'title': ['cmi+mi', 'cmi+pv'], 'x_label': ['trace_batch', 'trace_batch'], 'y_label': ['mi', 'pv']}
+    'figure_params_along_trace': {'title': ['cmi+mi', 'cmi+pv'], 'x_label': ['trace_batch', 'trace_batch'],
+                                  'y_label': ['mi', 'pv']}
 }
 
 """ 

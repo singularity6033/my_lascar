@@ -16,6 +16,8 @@ def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
 
     # construct leakages and values
     leakages = traces
+    trace_info = {'max_leakage': np.max(leakages),
+                  'min_leakage': np.min(leakages)}
 
     value_dtype = np.dtype([('plaintexts', np.uint8, plaintexts[0, :].shape),
                             ('ciphertexts', np.uint8, ciphertexts[0, :].shape),
@@ -33,6 +35,6 @@ def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
         values[i] = value
         # values = value if i == 0 else np.hstack([tmp, value])  # this way is too time consuming
 
-    container = TraceBatchContainer(leakages, values)
+    container = TraceBatchContainer(leakages, values), trace_info
 
     return container

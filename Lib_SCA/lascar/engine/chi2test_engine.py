@@ -27,7 +27,7 @@ class Chi2TestEngine(PartitionerEngine):
         :param bin_range: (min, max) lower and upper bounds for the bins
         """
         PartitionerEngine.__init__(self, name, partition_function, range(2), 2)
-        self.logger.debug('Creating Chi2TestEngine  "%s". ' % (name))
+        self.logger.debug('Creating Chi2TestEngine  "%s". ' % name)
 
         bin_width = (bin_range[1] - bin_range[0]) / n_bins
         self._bin_starts = [bin_range[0] + i * bin_width for i in range(n_bins)]
@@ -47,7 +47,7 @@ class Chi2TestEngine(PartitionerEngine):
             for idx_sample in np.ndindex(self._session.leakage_shape):
                 x = batch.leakages[i, idx_sample]
                 # Use dichotomy to find bin index
-                idx_bin = bisect(self._bin_starts, x) - 1
+                idx_bin = bisect(self._bin_starts, x) - 1 if not x == self._bin_starts[0] else 0
                 self._histogram[idx_part, idx_sample, idx_bin] += 1
 
     def _finalize(self):

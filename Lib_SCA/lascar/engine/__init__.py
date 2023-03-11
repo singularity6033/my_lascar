@@ -45,7 +45,7 @@ from .dom_engine import DomEngine
 from .mi_engine import CMI_Engine_By_Histogram
 from .mi_engine import CMI_Engine_By_KDE
 from .success_rate_engine import numerical_success_rate
-from .graph_engine_basic import Phase_Space_Reconstruction_Graph, Generalised_RDPG
+from .graph_engine_basic import Phase_Space_Reconstruction_Graph, Amplitudes_Based_Graph, Generalised_RDPG
 from .graph_engine_direct_test import GraphTestEngine, TraceBasedGraphTestEngine, GraphTestEngine_Attack
 from .graph_engine_distance_test import GraphDistanceEngine, TraceBasedGraphDistanceEngine, GraphDistanceEngine_Attack
 from .graph_engine_mi_test import GraphMIEngine

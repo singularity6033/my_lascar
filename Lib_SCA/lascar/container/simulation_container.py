@@ -265,7 +265,7 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
-        # p_el = np.random.normal(loc=self.noise_mean_el, scale=np.sqrt(self.noise_sigma_el), size=self.number_of_time_samples)
+        # p_el = np.random.normal(loc=self.noise_mean_el, scale=self.noise_sigma_el, size=self.number_of_time_samples)
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -482,8 +482,7 @@ class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         # p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
-        p_el = np.random.normal(loc=self.noise_mean_el, scale=np.sqrt(self.noise_sigma_el),
-                                size=self.number_of_time_samples)
+        p_el = np.random.normal(loc=self.noise_mean_el, scale=self.noise_sigma_el, size=self.number_of_time_samples)
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -674,7 +673,8 @@ class SimulatedPowerTraceContainerWithPlaintext(AbstractContainer):
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
         # p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
-        p_el = np.random.normal(loc=self.noise_mean_el, scale=np.sqrt(self.noise_sigma_el), size=self.number_of_time_samples)
+        p_el = np.random.normal(loc=self.noise_mean_el, scale=np.sqrt(self.noise_sigma_el),
+                                size=self.number_of_time_samples)
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -699,7 +699,8 @@ class SimulatedPowerTraceContainerWithPlaintext(AbstractContainer):
         value["power_components"] = np.vstack((np.vstack((p_el, p_exp)), p_switch))
 
         if self.shuffle:
-            if 0 <= self.shuffle_range[0] < self.number_of_time_samples and self.shuffle_range[0] < self.shuffle_range[1] < self.number_of_time_samples:
+            if 0 <= self.shuffle_range[0] < self.number_of_time_samples and self.shuffle_range[0] < self.shuffle_range[
+                1] < self.number_of_time_samples:
                 np.random.shuffle(np.transpose(power[self.shuffle_range[0]:self.shuffle_range[1] + 1]))
             else:
                 print('[INFO] invalid shuffle range...')

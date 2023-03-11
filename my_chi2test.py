@@ -6,7 +6,6 @@ Its constructor needs a partition function, which will separate leakages into tw
 
 """
 from tqdm import tqdm
-
 from Lib_SCA.config_extractor import JSONConfig
 from configs.evaluation_configs import chi2_test_config
 from configs.simulation_configs import fixed_random_traces
@@ -16,36 +15,33 @@ from Lib_SCA.lascar import Session, Chi2TestEngine
 from real_traces_generator import real_trace_container
 
 
-# from real_traces_generator import real_trace_generator
+def calc_upper_bound(no_of_bytes, no_of_masking_bytes):
+    return no_of_bytes * (no_of_masking_bytes + 1) * 8
 
 
 def chi2_test(params, trace_params, output_path):
     container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+        if not container.masking:
+            num_bins = calc_upper_bound(container.number_of_bytes, 0)
+        else:
+            num_bins = calc_upper_bound(container.number_of_bytes, container.number_of_masking_bytes)
+        offsets = [-3 * container.noise_sigma_el, 3 * container.noise_sigma_el]
+        hist_boundary = [0, num_bins] + offsets
     elif params['mode'] == 'real':
-        container = real_trace_container(dataset_path=params['dataset_path'],
-                                         num_traces=1000,
-                                         t_start=0,
-                                         t_end=1262)
+        container, t_info = real_trace_container(dataset_path=params['dataset_path'],
+                                                 num_traces=1000,
+                                                 t_start=0,
+                                                 t_end=1262)
+        hist_boundary = [t_info['min_leakage'], t_info['max_leakage']]
+
+    num_bins = int(hist_boundary[1] - hist_boundary[0]) // params['bin_size']
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace
         # fix and random sets have already been partitioned in container
         return int(value["trace_idx"] % 2 == 0)
-
-    def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
-        return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
-
-    '''if not container.masking:
-        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, 0)
-    else:
-        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes,
-                                              container.number_of_masking_bytes)  # or 0 ('auto')
-    hist_boundary = [0, num_bins - 1]'''
-
-    num_bins = calc_best_num_of_hist_bins(16, 0)
-    hist_boundary = [0, num_bins - 1]
 
     chi2test_engine = Chi2TestEngine(params['engine_name'],
                                      partition_function,

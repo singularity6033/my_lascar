@@ -20,6 +20,11 @@ from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixe
 from Lib_SCA.lascar import MultipleMatrixPlotsOutputMethod
 from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session
 from Lib_SCA.lascar.tools.aes import sbox
+from real_traces_generator import real_trace_container
+
+
+def calc_upper_bound(no_of_bytes, no_of_masking_bytes):
+    return no_of_bytes * (no_of_masking_bytes + 1) * 8
 
 
 def continuous_mutual_information(params, trace_params, output_path):
@@ -27,8 +32,20 @@ def continuous_mutual_information(params, trace_params, output_path):
     container = None
     if params['mode'] == 'normal':
         container = SimulatedPowerTraceContainer(config_params=trace_params)
+        if not container.masking:
+            num_bins = calc_upper_bound(container.number_of_bytes, 0)
+        else:
+            num_bins = calc_upper_bound(container.number_of_bytes, container.number_of_masking_bytes)
+        offsets = [-3 * container.noise_sigma_el, 3 * container.noise_sigma_el]
+        hist_boundary = [0, num_bins] + offsets
     elif params['mode'] == 'real':
-        pass
+        container, t_info = real_trace_container(dataset_path=params['dataset_path'],
+                                                 num_traces=1000,
+                                                 t_start=0,
+                                                 t_end=1262)
+        hist_boundary = [t_info['min_leakage'], t_info['max_leakage']]
+
+    num_bins = int(hist_boundary[1] - hist_boundary[0]) // params['bin_size']
 
     a_byte = container.idx_exp[0]
     attack_time = container.attack_sample_point
@@ -43,30 +60,21 @@ def continuous_mutual_information(params, trace_params, output_path):
 
     guess_range = range(params['no_of_key_guesses'])
 
-    def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
-        return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
-
-    if not container.masking:
-        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, 0)
-    else:
-        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, container.number_of_masking_bytes)  # or 0 ('auto')
-
-    hist_boundary = [0, num_bins-1]  # or None
-
     mi_engine = CMI_Engine_By_Histogram(params['engine_name'],
                                         selection_function,
                                         guess_range,
-                                        num_bins=num_bins,
+                                        num_bins=num_bins,  # 0 is 'auto' mode
                                         hist_boundary=hist_boundary,
                                         num_shuffles=params['num_shuffles'],
                                         solution=params['idx_of_correct_key_guess'])
 
     session = Session(container,
                       engine=mi_engine,
-                      output_method=MultipleMatrixPlotsOutputMethod(figure_params_along_time=params['figure_params_along_time'],
-                                                                    figure_params_along_trace=params['figure_params_along_trace'],
-                                                                    output_path=output_path,
-                                                                    display=False),
+                      output_method=MultipleMatrixPlotsOutputMethod(
+                          figure_params_along_time=params['figure_params_along_time'],
+                          figure_params_along_trace=params['figure_params_along_trace'],
+                          output_path=output_path,
+                          display=False),
                       # output_steps=params['batch_size']
                       )
     session.run(batch_size=params['batch_size'])
