@@ -13,6 +13,7 @@ from configs.simulation_configs import fixed_random_traces
 from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer
 from Lib_SCA.lascar import SingleVectorPlotOutputMethod
 from Lib_SCA.lascar import Session, Chi2TestEngine
+from real_traces_generator import real_trace_container
 
 
 # from real_traces_generator import real_trace_generator
@@ -22,6 +23,11 @@ def chi2_test(params, trace_params, output_path):
     container = None
     if params['mode'] == 'fix_random':
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
+    elif params['mode'] == 'real':
+        container = real_trace_container(dataset_path=params['dataset_path'],
+                                         num_traces=1000,
+                                         t_start=0,
+                                         t_end=1262)
 
     def partition_function(value):
         # partition_function must take 1 argument: the value returned by the container at each trace
@@ -31,11 +37,15 @@ def chi2_test(params, trace_params, output_path):
     def calc_best_num_of_hist_bins(no_of_bytes, no_of_masking_bytes):
         return no_of_bytes * (no_of_masking_bytes + 1) * 8 + 1
 
-    if not container.masking:
+    '''if not container.masking:
         num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, 0)
     else:
-        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes, container.number_of_masking_bytes)  # or 0 ('auto')
-    hist_boundary = [0, num_bins-1]
+        num_bins = calc_best_num_of_hist_bins(container.number_of_bytes,
+                                              container.number_of_masking_bytes)  # or 0 ('auto')
+    hist_boundary = [0, num_bins - 1]'''
+
+    num_bins = calc_best_num_of_hist_bins(16, 0)
+    hist_boundary = [0, num_bins - 1]
 
     chi2test_engine = Chi2TestEngine(params['engine_name'],
                                      partition_function,
@@ -59,6 +69,7 @@ def chi2_test(params, trace_params, output_path):
 
 if __name__ == '__main__':
     # chi2_test(chi2_test_config, fixed_random_traces, output_path='./results/chi2-test')
+    chi2_test(chi2_test_config, None, output_path='./results/chi2-test')
     gt_params = chi2_test_config
     trace_info = fixed_random_traces
     # json config file generation
@@ -72,7 +83,7 @@ if __name__ == '__main__':
     #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
     #         json_config.generate_config(trace_info)
 
-    for m_number_of_traces in [50000, 100000, 250000, 350000]:
+    '''for m_number_of_traces in [50000, 100000, 250000, 350000]:
         for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
             for m_masking_bytes in range(10):
                 trace_info['number_of_traces'] = m_number_of_traces
@@ -81,10 +92,10 @@ if __name__ == '__main__':
                 trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
                                     '_#mask_' + str(m_masking_bytes) + \
                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                json_config.generate_config(trace_info)
+                json_config.generate_config(trace_info)'''
 
     # get json config file
-    dict_list = json_config.get_config()
+    '''dict_list = json_config.get_config()
     for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        chi2_test(gt_params, dict_i, output_path='./results/chi2test_v6/' + dict_i['_id'])
+        chi2_test(gt_params, dict_i, output_path='./results/chi2test_v6/' + dict_i['_id'])'''

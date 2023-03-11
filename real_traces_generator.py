@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 def real_trace_container(dataset_path, num_traces, t_start, t_end, offset=0):
     traces, plaintexts, ciphertexts = read_hdf5_proj(database_file=dataset_path,
-                                                     idx_srt=0+offset,
-                                                     idx_end=num_traces+offset,
+                                                     idx_srt=0 + offset,
+                                                     idx_end=num_traces + offset,
                                                      start=t_start,
                                                      end=t_end,
                                                      load_trace=True,
