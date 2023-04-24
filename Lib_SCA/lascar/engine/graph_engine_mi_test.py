@@ -5,7 +5,8 @@ from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp
 import sklearn.feature_selection as fs
 from tqdm import tqdm
 
-from . import PartitionerEngine, Phase_Space_Reconstruction_Graph
+from . import PartitionerEngine
+from .graph_construction_basic import PhaseSpaceReconstructionGraph
 
 
 class GraphMIEngine(PartitionerEngine):
@@ -67,9 +68,9 @@ class GraphMIEngine(PartitionerEngine):
         m_r, m_f = int(self._partition_count[0]), int(self._partition_count[1])
 
         # convert 1-d time series into 2-d graphs by phase space reconstruction
-        init_graph_r = Phase_Space_Reconstruction_Graph(random_set, self.time_delay, self.dim, self.sampling_interval)
+        init_graph_r = PhaseSpaceReconstructionGraph(random_set, self.time_delay, self.dim, self.sampling_interval)
         init_graph_r.generate()
-        init_graph_f = Phase_Space_Reconstruction_Graph(fixed_set, self.time_delay, self.dim, self.sampling_interval)
+        init_graph_f = PhaseSpaceReconstructionGraph(fixed_set, self.time_delay, self.dim, self.sampling_interval)
         init_graph_f.generate()
 
         self.number_of_nodes = init_graph_r.number_of_nodes
@@ -87,7 +88,7 @@ class GraphMIEngine(PartitionerEngine):
         # p = 0.5 * np.ones((m_r, self.number_of_nodes, self.number_of_nodes))
         for i in tqdm(range(self.num_shuffles)):
             np.random.shuffle(random_set)
-            shuffled_graph_r = Phase_Space_Reconstruction_Graph(random_set, self.time_delay, self.dim,
+            shuffled_graph_r = PhaseSpaceReconstructionGraph(random_set, self.time_delay, self.dim,
                                                                 self.sampling_interval)
             shuffled_graph_r.generate()
             shuffled_graph_samples_r = shuffled_graph_r.adj_matrix

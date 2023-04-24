@@ -274,6 +274,7 @@ from configs.simulation_configs import normal_simulated_traces
 
 # create instance for simulated power traces (normal)
 container = SimulatedPowerTraceContainer(config_params=normal_simulated_traces)
+print(container.number_of_traces)
 
 # then we can access the trace like a python list to get traces we want
 

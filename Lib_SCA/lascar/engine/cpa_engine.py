@@ -39,7 +39,7 @@ class CpaEngine(GuessEngine):
     and the corresponding leakages.
     """
 
-    def __init__(self, name, selection_function, guess_range, solution=None, jit=True):
+    def __init__(self, name, selection_function, guess_range, solution=None, jit=False):
         """
 
         :param name:

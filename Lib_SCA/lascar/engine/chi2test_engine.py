@@ -1,7 +1,7 @@
 import numpy as np
 
 from . import PartitionerEngine
-from bisect import bisect
+from bisect import bisect, bisect_left
 from scipy.stats import chi2_contingency
 
 
@@ -38,7 +38,7 @@ class Chi2TestEngine(PartitionerEngine):
                                    dtype=np.dtype("uint32"))
         self._partition_count = np.zeros((self._partition_size,), dtype=np.double)
 
-    def _update(self, batch):
+    def _base_update(self, batch):
         partition_values = list(map(self._partition_function, batch.values))
         for i, v in enumerate(partition_values):
             idx_part = self._partition_range_to_index[v]
@@ -47,7 +47,7 @@ class Chi2TestEngine(PartitionerEngine):
             for idx_sample in np.ndindex(self._session.leakage_shape):
                 x = batch.leakages[i, idx_sample]
                 # Use dichotomy to find bin index
-                idx_bin = bisect(self._bin_starts, x) - 1 if not x == self._bin_starts[0] else 0
+                idx_bin = bisect_left(self._bin_starts, x) - 1 if not x == self._bin_starts[0] else 0
                 self._histogram[idx_part, idx_sample, idx_bin] += 1
 
     def _finalize(self):

@@ -25,7 +25,7 @@ def tt_test(params, trace_params, output_path):
         container = SimulatedPowerTraceFixedRandomContainer(config_params=trace_params)
     elif params['mode'] == 'real':
         container, _ = real_trace_container(dataset_path=params['dataset_path'],
-                                            num_traces=2000000,
+                                            num_traces=params['num_traces'],
                                             t_start=0,
                                             t_end=1262)
 
@@ -64,32 +64,19 @@ def tt_test(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    tt_test(t_test_config, fixed_random_traces, output_path='./results/t-test')
-    # gt_params = t_test_config
-    # trace_info = fixed_random_traces
-    # # json config file generation
-    # json_config = JSONConfig('ttest_v6')
-    # 500k
-    # for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
-    #     for m_masking_bytes in range(10):
-    #         trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #         trace_info['number_of_masking_bytes'] = m_masking_bytes
-    #         trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
-    #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-    #         json_config.generate_config(trace_info)
-    # for m_number_of_traces in [50000, 100000, 250000, 350000]:
-    #     for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
-    #         for m_masking_bytes in range(10):
-    #             trace_info['number_of_traces'] = m_number_of_traces
-    #             trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #             trace_info['number_of_masking_bytes'] = m_masking_bytes
-    #             trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
-    #                                 '_#mask_' + str(m_masking_bytes) + \
-    #                                 '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-    #             json_config.generate_config(trace_info)
+    # tt_test(t_test_config, fixed_random_traces, output_path='./results/t-test')
+    ttest_params = t_test_config
+    trace_info = fixed_random_traces
+    # json config file generation
+    json_config = JSONConfig('ttest_real_v1')
+
+    for m_number_of_traces in [1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000, 2000000]:
+        ttest_params['num_traces'] = m_number_of_traces
+        ttest_params['_id'] = '#trace_' + str(m_number_of_traces // 1000) + 'k'
+        json_config.generate_config(ttest_params)
 
     # get json config file
-    # dict_list = json_config.get_config()
-    # for i, dict_i in tqdm(enumerate(dict_list)):
-    #     print('[INFO] Processing #', i)
-    #     tt_test(gt_params, dict_i, output_path='./results/ttest_v6/' + dict_i['_id'])
+    dict_list = json_config.get_config()
+    for i, dict_i in tqdm(enumerate(dict_list)):
+        print('[INFO] Processing #', i)
+        tt_test(dict_i, trace_info, output_path='./results/ttest_real_v1/' + dict_i['_id'])

@@ -16,11 +16,11 @@ from tqdm import tqdm
 from Lib_SCA.config_extractor import JSONConfig
 from configs.evaluation_configs import cmi_config
 from configs.simulation_configs import normal_simulated_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer, SimulatedPowerTraceFixedRandomContainer
+from Lib_SCA.lascar import SimulatedPowerTraceContainer
 from Lib_SCA.lascar import MultipleMatrixPlotsOutputMethod
 from Lib_SCA.lascar import CMI_Engine_By_Histogram, hamming, Session
 from Lib_SCA.lascar.tools.aes import sbox
-from real_traces_generator import real_trace_container
+from real_traces_generator import real_trace_container_random
 
 
 def calc_upper_bound(no_of_bytes, no_of_masking_bytes):
@@ -28,42 +28,39 @@ def calc_upper_bound(no_of_bytes, no_of_masking_bytes):
 
 
 def continuous_mutual_information(params, trace_params, output_path):
-    params = params
-    container = None
+    container, hist_boundary = None, None
     if params['mode'] == 'normal':
         container = SimulatedPowerTraceContainer(config_params=trace_params)
+        attack_byte = container.idx_exp[0]
+        attack_time = container.attack_sample_point
         if not container.masking:
-            num_bins = calc_upper_bound(container.number_of_bytes, 0)
+            up = calc_upper_bound(container.number_of_bytes, 0)
         else:
-            num_bins = calc_upper_bound(container.number_of_bytes, container.number_of_masking_bytes)
+            up = calc_upper_bound(container.number_of_bytes, container.number_of_masking_bytes)
         offsets = [-3 * container.noise_sigma_el, 3 * container.noise_sigma_el]
-        hist_boundary = [0, num_bins] + offsets
+        hist_boundary = [0 + offsets[0], up + offsets[1]]
     elif params['mode'] == 'real':
-        container, t_info = real_trace_container(dataset_path=params['dataset_path'],
-                                                 num_traces=1000,
-                                                 t_start=0,
-                                                 t_end=1262)
+        container, t_info = real_trace_container_random(dataset_path=params['dataset_path'],
+                                                        num_traces=params['num_traces'],
+                                                        t_start=0,
+                                                        t_end=100)
         hist_boundary = [t_info['min_leakage'], t_info['max_leakage']]
 
-    num_bins = int(hist_boundary[1] - hist_boundary[0]) // params['bin_size']
-
-    a_byte = container.idx_exp[0]
-    attack_time = container.attack_sample_point
+    attack_byte = params['attack_byte']
 
     # selection attack regions along time axis
     # container.leakage_section = params['attack_range']
 
-    def selection_function(
-            value, guess, ab=a_byte, at=attack_time
-    ):
-        return hamming(sbox[value["plaintext"][ab][at] ^ guess])
+    def selection_function(value, guess, ab=attack_byte):
+        # LSB
+        return hamming(sbox[value["plaintexts"][ab] ^ guess])
 
-    guess_range = range(params['no_of_key_guesses'])
+    guess_range = range(32, params['no_of_key_guesses'])
 
     mi_engine = CMI_Engine_By_Histogram(params['engine_name'],
                                         selection_function,
                                         guess_range,
-                                        num_bins=num_bins,  # 0 is 'auto' mode
+                                        num_bins=params['num_bins'],  # 0 is 'auto' mode
                                         hist_boundary=hist_boundary,
                                         num_shuffles=params['num_shuffles'],
                                         solution=params['idx_of_correct_key_guess'])
@@ -85,64 +82,24 @@ def continuous_mutual_information(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    # cmi_params = cmi_config
-    # trace_info = normal_simulated_traces
-    # # json config file generation
-    # json_config = JSONConfig('cmi_test_1')
-    # # 10k, 50k, 200k, 500k, 1000k
-    # for m_number_of_traces in [500000, 10000000]:
-    #     for m_number_of_bytes in range(1, 17):
-    #         for m_noise_sigma_el in [0, 0.25, 0.5]:
-    #             for m_num_of_masking_bytes in [0, 1, 2]:
-    #                 m_idx_switching_noise_bytes = [i + 1 for i in range(m_number_of_bytes - 1)]
-    #                 trace_info['number_of_traces'] = m_number_of_traces
-    #                 trace_info['number_of_bytes'] = m_number_of_bytes
-    #                 trace_info['idx_switching_noise_bytes'] = m_idx_switching_noise_bytes
-    #                 trace_info["number_of_masking_bytes"] = m_num_of_masking_bytes
-    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #                 trace_info['_id'] = '#mask_' + str(trace_info["number_of_masking_bytes"]) + \
-    #                                     '_el_' + str(trace_info['noise_sigma_el']) + \
-    #                                     '_#switch_' + str(trace_info['number_of_bytes'] - 1) + \
-    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-    #                 json_config.generate_config(trace_info)
-    #
-    # # get json config file
-    # dict_list = json_config.get_config()
-    # for i, dict_i in tqdm(enumerate(dict_list[1:])):
-    #     print('[INFO] Processing #', i)
-    #     continuous_mutual_information(cmi_params, dict_i, output_path='./results/cmi_results_test/' + dict_i['_id'])
-
-    gt_params = cmi_config
+    cmi_params = cmi_config
     trace_info = normal_simulated_traces
+    # continuous_mutual_information(cmi_config, trace_info, output_path='./results/yzs')
     # json config file generation
-    json_config = JSONConfig('cmi_v6')
-    # 500k
-    # for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
-    #     for m_masking_bytes in range(10):
-    #         trace_info['noise_sigma_el'] = m_noise_sigma_el
-    #         trace_info['number_of_masking_bytes'] = m_masking_bytes
-    #         trace_info['_id'] = '#mask_' + str(m_masking_bytes) + '_el_' + str(m_noise_sigma_el) + \
-    #                             '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-    #         json_config.generate_config(trace_info)
+    json_config = JSONConfig('cmi_test_real_v1')
 
-    for m_number_of_traces in [50000, 100000, 250000, 350000]:
-        for m_noise_sigma_el in [0, 0.25, 0.5, 1, 1.5, 2]:
-            for m_masking_bytes in range(10):
-                trace_info['number_of_traces'] = m_number_of_traces
-                trace_info['noise_sigma_el'] = m_noise_sigma_el
-                trace_info['number_of_masking_bytes'] = m_masking_bytes
-                trace_info['_id'] = 'el_' + str(m_noise_sigma_el) + \
-                                    '_#mask_' + str(m_masking_bytes) + \
-                                    '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                json_config.generate_config(trace_info)
+    for m_number_of_traces in [1000, 5000, 10000, 50000, 100000, 250000]:
+        for num_bins in [10, 20, 50]:
+            cmi_params['num_traces'] = m_number_of_traces
+            cmi_params['num_bins'] = num_bins
+            cmi_params['_id'] = '#bins' + str(num_bins) + '_#trace_' + str(m_number_of_traces // 1000) + 'k'
+            json_config.generate_config(cmi_params)
 
     # get json config file
     dict_list = json_config.get_config()
     for i, dict_i in tqdm(enumerate(dict_list)):
         print('[INFO] Processing #', i)
-        continuous_mutual_information(gt_params, dict_i, output_path='./results/cmi_v6/' + dict_i['_id'])
-
-    # continuous_mutual_information(cmi_params, trace_info, output_path='./plots/cmi_results_test/')
+        continuous_mutual_information(dict_i, trace_info, output_path='./results/cmi_test_real_v1/' + dict_i['_id'])
 
     # from pathlib import Path
     #

@@ -2,26 +2,29 @@ import os
 
 from configs.attack_configs import dpa_config
 from configs.simulation_configs import normal_simulated_traces
-from Lib_SCA.lascar import SimulatedPowerTraceContainer
+from Lib_SCA.lascar import SimulatedPowerTraceStandardContainer
 from Lib_SCA.lascar import SingleMatrixPlotOutputMethod
 from Lib_SCA.lascar.tools.aes import sbox
 from Lib_SCA.lascar import DpaEngine
 from Lib_SCA.lascar import Session
 
 
-# from real_traces_generator import real_trace_generator
+from real_traces_generator import real_trace_container_random
 
 
 def dpa_attack(params, trace_params, output_path):
     container = None
     if params['mode'] == 'normal':
-        container = SimulatedPowerTraceContainer(config_params=trace_params)
+        container = SimulatedPowerTraceStandardContainer(config_params=trace_params)
     elif params['mode'] == 'real':
-        pass
-        # container = real_trace_generator()
+        container, t_info = real_trace_container_random(dataset_path=params['dataset_path'],
+                                                        num_traces=params['num_traces'],
+                                                        t_start=0,
+                                                        t_end=1262)
+    attack_byte = params['attack_byte']
 
-    attack_byte = container.idx_exp[0]
-    attack_time = container.attack_sample_point
+    # attack_byte = container.idx_exp[0]
+    # attack_time = container.attack_sample_point
 
     # selection attack regions along time axis
     # container.leakage_section = params['attack_range']
@@ -34,9 +37,9 @@ def dpa_attack(params, trace_params, output_path):
     - a guess_range: what are the guesses you want to test?
     """
 
-    def selection_function(value, guess, ab=attack_byte, at=attack_time):
+    def selection_function(value, guess, ab=attack_byte):
         # LSB
-        return sbox[value["plaintext"][ab][at] ^ guess] & 1
+        return sbox[value["plaintext"][ab] ^ guess] & 1
 
     guess_range = range(params['no_of_key_guesses'])
 
@@ -62,4 +65,4 @@ def dpa_attack(params, trace_params, output_path):
 
 
 if __name__ == '__main__':
-    dpa_attack(dpa_config, normal_simulated_traces, output_path='./results/dpa')
+    dpa_attack(dpa_config, normal_simulated_traces, output_path='./results_attack/dpa')

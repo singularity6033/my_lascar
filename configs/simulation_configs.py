@@ -3,12 +3,12 @@ configs for normal_simulated_traces
 """
 normal_simulated_traces = {
     # total number of traces
-    'number_of_traces': 20000,
+    'number_of_traces': 100000,
     # total number of bytes for each time sample in one trace
-    'number_of_bytes': 1,
+    'number_of_bytes': 16,
 
     # total number of time sample points one trace has
-    'number_of_time_samples': 2000,
+    'number_of_time_samples': 10,
 
     # position (index) of time sample point we presumptively attack
     'attack_sample_point': 0,
@@ -21,7 +21,7 @@ normal_simulated_traces = {
     # int or list (0-number_of_bytes)
     # all indexes should be exclusive and total number of them should equal to "number_of_bytes"
     'idx_exploitable_bytes': [0],
-    'idx_switching_noise_bytes': [],
+    'idx_switching_noise_bytes': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
 
     # parameters of electronic noise (a Multi-Gaussian distribution)
     # mean is a 1-d list with the shape: number_of_time_samples * 1
@@ -35,7 +35,7 @@ normal_simulated_traces = {
     # if parameters for all time samples are same, just pass single value, and mean vector and cov matrix will be generated
     # automatically i1 the code
     'noise_mean_el': 0,
-    'noise_sigma_el': 0.1,
+    'noise_sigma_el': 0,
 
     # constant term used in calculation of trace power
     'constant': 0,
@@ -54,8 +54,8 @@ normal_simulated_traces = {
     'leakage_model_name': "default",
 
     # masking countermeasure
-    'masking': True,
-    'number_of_masking_bytes': 0,
+    'masking': False,
+    'number_of_masking_bytes': 1,
 
     # shuffle
     'shuffle': False,
@@ -66,8 +66,8 @@ normal_simulated_traces = {
     'shift_range': 5
 }
 
-"""
-configs for fixed_random_traces
+""" 
+configs for fixed_random_traces  
 """
 fixed_random_traces = {
     # total number of traces
@@ -136,4 +136,3 @@ fixed_random_traces = {
     'shift': False,
     'shift_range': 5
 }
-

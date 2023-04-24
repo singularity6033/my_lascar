@@ -45,9 +45,21 @@ from .dom_engine import DomEngine
 from .mi_engine import CMI_Engine_By_Histogram
 from .mi_engine import CMI_Engine_By_KDE
 from .success_rate_engine import numerical_success_rate
-from .graph_engine_basic import Phase_Space_Reconstruction_Graph, Amplitudes_Based_Graph, Generalised_RDPG
-from .graph_engine_direct_test import GraphTestEngine, TraceBasedGraphTestEngine, GraphTestEngine_Attack
-from .graph_engine_distance_test import GraphDistanceEngine, TraceBasedGraphDistanceEngine, GraphDistanceEngine_Attack
+
+# from .graph_construction_basic import PhaseSpaceReconstructionGraph, AmplitudesBasedGraph, GeneralisedRDPG
+
+from .graph_construction_test_engine import T_GraphConstructionPSR, T_GraphConstructionAB, T_GraphConstructionTraceBatch
+from .graph_construction_test_engine import T_GraphConstructionTraceAllCorr, T_GraphConstructionTraceAllDist
+from .graph_construction_attack_engine import A_GraphConstructionPSR, A_GraphConstructionAB, A_GraphConstructionTraceBatch
+from .graph_construction_attack_engine import A_GraphConstructionTraceAllCorr, A_GraphConstructionTraceAllDist
+
+from .graph_testing_engine import GraphTestEnginePSR, GraphTestEngineAB, GraphTestEngineTraceBatch
+from .graph_testing_engine import GraphTestingEngineTraceAllCorr, GraphTestingEngineTraceAllDist
+from .graph_attack_engine import GraphAttackEngineTraceAllCorr, GraphAttackEngineTraceAllDist, GraphAttackEngineTraceBatch
+
+# from .graph_testing_basic import TwoSamplesGraphTesting, GraphCommunityBasedTesting, Chi2Test
+# from .graph_attack_basic import SpectralDistance
+
 from .graph_engine_mi_test import GraphMIEngine
 
 # from .template_engine import TemplateProfileEngine

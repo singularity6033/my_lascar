@@ -6,13 +6,14 @@ t_test_config = {
     'mode': 'real',  # or real
 
     'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
     # used in 'real' mode
 
     # engine name (trivial)
     'engine_name': 'ttest',
 
     # batch size
-    'batch_size': 500,
+    'batch_size': 50000,
 
     # plotting params
     'figure_params_along_time': {'title': 't-test_result', 'x_label': 'time', 'y_label': 'p-value'},
@@ -25,9 +26,10 @@ chi2-test
 chi2_test_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'real',
-    'bin_size': 1,
+    'num_bins': 10,
 
     'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000000,
     # used in 'real' mode
 
     # engine name (trivial)
@@ -46,12 +48,16 @@ continuous mutual information
 """
 cmi_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'normal',
-    'bin_size': 1,
+    'mode': 'real',
+    'num_bins': 8,
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+    'attack_byte': 0,
 
     # the total number of key guesses used in the cpa attack
     # the index of the correct key guess
-    'no_of_key_guesses': 5,
+    'no_of_key_guesses': 34,
     'idx_of_correct_key_guess': 0,
 
     # engine name (trivial)
@@ -59,7 +65,7 @@ cmi_config = {
 
     # attack range
     # attack specific time range of the generated traces (python generator)
-    'attack_range': range(0, 4),
+    # 'attack_range': range(0, 4),
 
     # number of shuffles
     'num_shuffles': 10,
@@ -76,71 +82,193 @@ cmi_config = {
 """ 
 graph-based test
 """
-graph_test_config = {
-    # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+graph_direct_test_aio_config = {
+    # the type of the container (fixed-random trace or real trace)
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'type': 'dist',
+
+    'k': 3,
 
     # engine name (trivial)
-    'engine_name': 'graph_test',
+    'engine_name': 'graph_direct_test_aio',
+
+    # batch size
+    'batch_size': 1000000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_direct_test_aio', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+}
+
+graph_direct_test_along_time_psr_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'time_delay': 1,
+    'dim': 10,
+    'sampling_interval': 1,
+
+    'type': 'corr',
+
+    # engine name (trivial)
+    'engine_name': 'graph_direct_test_along_time_psr',
 
     # batch size
     'batch_size': 50000,
 
     # plotting params
-    'figure_params': {'title': 'graph_test_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+    'figure_params': {'title': 'graph_direct_test_along_time_psr', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
 
-graph_test_trace_based_config = {
+graph_direct_test_along_time_amp_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'num_of_amp_groups': 10,
+    'num_of_moments': 4,
+
+    'type': 'corr',
 
     # engine name (trivial)
-    'engine_name': 'graph_test_trace_based',
+    'engine_name': 'graph_direct_test_along_time_amp',
+
+    # batch size
+    'batch_size': 50000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_direct_test_along_time_amp', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+}
+
+graph_direct_test_along_trace_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    # engine name (trivial)
+    'engine_name': 'graph_direct_test_along_trace',
 
     # batch size
     'batch_size': 50,
 
     # plotting params
-    'figure_params': {'title': 'graph_test_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+    'figure_params': {'title': 'graph_direct_test_along_trace', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
 
-graph_test_attack_config = {
-    # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'normal',
+graph_direct_test_attack_psr_config = {
+    # the type of the container (normal trace or real trace)
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000000,
 
-    'no_of_key_guesses': 5,
+    'time_delay': 2,
+    'dim': 10,
+    'sampling_interval': 1,
+
+    'measurement': 'corr',
+
+    'no_of_key_guesses': 256,
     'idx_of_correct_key_guess': 0,
 
+    'attack_byte': 0,
+
     # engine name (trivial)
-    'engine_name': 'graph_test_attack',
+    'engine_name': 'graph_direct_test_attack_psr',
 
     # batch size
     'batch_size': 50000,
 
     # plotting params
-    'figure_params': {'title': 'graph_test_attack', 'x_label': 'key_guess', 'y_label': 'p-value'}
+    'figure_params': {'title': 'graph_direct_test_attack_psr', 'x_label': 'key_guess', 'y_label': 'p-value'}
 }
 
-graph_distance_config = {
+graph_direct_test_attack_amp_config = {
+    # the type of the container (normal trace or real trace)
+    'mode': 'real',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'num_of_amp_groups': 10,
+    'num_of_moments': 4,
+
+    'measurement': 'corr',
+
+    'no_of_key_guesses': 256,
+    'idx_of_correct_key_guess': 0,
+
+    'attack_byte': 0,
+
+    # engine name (trivial)
+    'engine_name': 'graph_direct_test_attack_amp',
+
+    # batch size
+    'batch_size': 50000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_direct_test_attack_amp', 'x_label': 'key_guess', 'y_label': 'p-value'}
+}
+
+graph_distance_test_along_time_psr_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+    'mode': 'real',
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'time_delay': 2,
+    'dim': 10,
+    'sampling_interval': 1,
+    'measurement': 'corr',
 
     'distance_type': 'lambda_dist',
     'num_bins': 50,
 
     # engine name (trivial)
-    'engine_name': 'graph_distance',
+    'engine_name': 'graph_distance_test_along_time_psr',
 
     # batch size
     'batch_size': 50000,
 
     # plotting params
-    'figure_params': {'title': 'graph_distance_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+    'figure_params': {'title': 'graph_distance_test_along_time_psr', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
 
-graph_distance_trace_based_config = {
+graph_distance_test_along_time_amp_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'fix_random',
+    'mode': 'real',
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'num_of_amp_groups': 10,
+    'num_of_moments': 4,
+    'measurement': 'corr',
+
+    'distance_type': 'lambda_dist',
+    'num_bins': 50,
+
+    # engine name (trivial)
+    'engine_name': 'graph_distance_test_along_time_amp',
+
+    # batch size
+    'batch_size': 50000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_distance_test_along_time_amp', 'x_label': 'trace_batch', 'y_label': 'p-value'}
+}
+
+graph_distance_test_along_trace_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'real',
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
 
     'distance_type': 'lambda_dist',
     'num_bins': 50,
@@ -149,27 +277,67 @@ graph_distance_trace_based_config = {
     'engine_name': 'graph_distance_trace_based',
 
     # batch size
-    'batch_size': 50,
+    'batch_size': 1000,
 
     # plotting params
     'figure_params': {'title': 'graph_distance_trace_based_result', 'x_label': 'trace_batch', 'y_label': 'p-value'}
 }
 
-graph_distance_attack_config = {
+graph_distance_test_attack_psr_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
-    'mode': 'normal',
+    'mode': 'real',
 
-    'no_of_key_guesses': 5,
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'time_delay': 2,
+    'dim': 10,
+    'sampling_interval': 1,
+    'measurement': 'corr',
+
+    'distance_type': 'lambda_dist',
+    'num_bins': 50,
+
+    'no_of_key_guesses': 256,
     'idx_of_correct_key_guess': 0,
 
-    'distance_type': 'deltacon0',
+    'attack_byte': 0,
 
     # engine name (trivial)
-    'engine_name': 'graph_distance_attack',
+    'engine_name': 'graph_distance_test_attack_psr',
 
     # batch size
-    'batch_size': 5000,
+    'batch_size': 50000,
 
     # plotting params
-    'figure_params': {'title': 'graph_distance_attack_result', 'x_label': 'key_guess', 'y_label': 'p-value'}
+    'figure_params': {'title': 'graph_distance_test_attack_psr', 'x_label': 'key_guess', 'y_label': 'p-value'}
+}
+
+graph_distance_test_attack_amp_config = {
+    # the type of the container (normal trace or fixed-random trace or real trace)
+    'mode': 'real',
+
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 1000,
+
+    'num_of_amp_groups': 10,
+    'num_of_moments': 4,
+    'measurement': 'corr',
+
+    'distance_type': 'lambda_dist',
+    'num_bins': 50,
+
+    'no_of_key_guesses': 256,
+    'idx_of_correct_key_guess': 0,
+
+    'attack_byte': 0,
+
+    # engine name (trivial)
+    'engine_name': 'graph_distance_test_attack_amp',
+
+    # batch size
+    'batch_size': 50000,
+
+    # plotting params
+    'figure_params': {'title': 'graph_distance_test_attack_amp', 'x_label': 'key_guess', 'y_label': 'p-value'}
 }

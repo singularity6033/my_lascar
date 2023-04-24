@@ -5,6 +5,11 @@ cpa_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'normal',
 
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 200000,
+
+    'attack_byte': 0,
+
     # the total number of key guesses used in the cpa attack
     # the index of the correct key guess
     'no_of_key_guesses': 256,
@@ -18,7 +23,7 @@ cpa_config = {
     'attack_range': range(0, 4),
 
     # batch size
-    'batch_size': 5000,
+    'batch_size': 50000,
 
     # plotting params
     'figure_params_along_time': {'title': 'cpa_result', 'x_label': 'time', 'y_label': 'correlation coefficient'},
@@ -32,6 +37,10 @@ dpa
 dpa_config = {
     # the type of the container (normal trace or fixed-random trace or real trace)
     'mode': 'normal',
+    'dataset_path': '/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+    'num_traces': 200000,
+
+    'attack_byte': 0,
 
     # the total number of key guesses used in the cpa attack
     # the index of the correct key guess
@@ -46,10 +55,40 @@ dpa_config = {
     'attack_range': range(0, 4),
 
     # batch size
-    'batch_size': 5000,
+    'batch_size': 500000,
 
     # plotting params
     # plotting params
     'figure_params_along_time': {'title': 'dpa_result', 'x_label': 'time', 'y_label': 'dom'},
     'figure_params_along_trace': {'title': 'dpa_result', 'x_label': 'trace_no', 'y_label': 'dom'}
+}
+
+"""
+graph based attack
+"""
+graph_attack_aio_config = {
+    'mode': 'real',
+    # 'dataset_path': './sca_real_data/EM_Sync_TVLA_1M.sx',
+    # 'dataset_path': './sca_real_data/EM_TVLA_1M.sx',
+    'dataset_path': './sca_real_data/dataset_from_sca_toolkit/ascad/ascad.sx',
+
+    'num_traces': 50000,
+    'attack_byte': 2,
+    'no_of_key_guesses': 256,
+
+    'graph_type': 'dist',
+
+    'k': 600,
+    'd_mode': 'l2',
+    'num_bins': 100,
+
+    # engine name (trivial)
+    'engine_name': 'graph_attack_aio',
+
+    # batch size
+    'batch_size': 10000,
+
+    # plotting params
+    'figure_params_along_time': {'title': 'graph_attack_aio', 'x_label': 'time', 'y_label': 'distance'},
+    'figure_params_along_trace': {'title': 'graph_attack_aio', 'x_label': 'trace_no', 'y_label': 'distance'}
 }

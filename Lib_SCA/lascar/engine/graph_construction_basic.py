@@ -5,27 +5,43 @@ import numpy as np
 from tqdm import tqdm
 from scipy.stats import norm, bernoulli, pearsonr, moment
 from PyAstronomy import pyaC
+from math import inf
 
 
-class Base_Graph:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def _calc_correlation_matrix(a, b):
-        num_of_vec = a.shape[0]
-        res = np.zeros((num_of_vec, num_of_vec))
-        for i in range(num_of_vec):
-            for j in range(num_of_vec):
-                if i <= j:
-                    res[i, j] = pearsonr(a[i, :], b[j, :])[0]
-                    res[j, i] = res[i, j]
-                else:
-                    continue
-        return np.abs(res)
+class BaseGraph:
+    def __init__(self, type='corr'):
+        if type == 'corr':
+            self.measurement_func = self.calc_correlation_matrix
+        elif type == 'l2':
+            self.measurement_func = self.calc_euclidean_distances
+        self.type = type
 
     @staticmethod
-    def _calc_euclidean_distances(a, b):
+    def calc_graph_laplacian_matrix(g):
+        # g is an adjacent matrix
+        d = np.diag(np.sum(g, axis=1)) - np.diag(g)
+        l = d - g
+        return l
+
+    @staticmethod
+    def calc_correlation_matrix(a, b):
+        if a.shape[0] != b.shape[0]:
+            print('a, b should have the same size along the first axis')
+            return
+        tmp_a, tmp_b = a.sum(0), b.sum(0)
+        tmp_a2, tmp_b2 = (a ** 2).sum(0), (b ** 2).sum(0)
+        tmp_ab = np.dot(a.T, b) / a.shape[0]
+        v_a = tmp_a2 / a.shape[0] - (tmp_a / a.shape[0]) ** 2
+        v_b = tmp_b2 / b.shape[0] - (tmp_b / b.shape[0]) ** 2
+        numerator = tmp_ab - np.outer(tmp_a / a.shape[0], tmp_b / b.shape[0])
+        denominator = np.sqrt(np.outer(v_a, v_b))
+        mask_a, mask_b = v_a == 0.0, v_b == 0.0
+        numerator[mask_a, mask_b], denominator[mask_a, mask_b] = 0.0, 1.0
+        adj_matrix = np.nan_to_num(numerator / denominator)
+        return np.abs(adj_matrix)
+
+    @staticmethod
+    def calc_euclidean_distances(a, b):
         abt = np.dot(a, b.T)
         a2 = np.array(np.sum(a ** 2, axis=1), ndmin=2).T.repeat(abt.shape[1], axis=1)
         b2 = np.array(np.sum(b ** 2, axis=1), ndmin=2).repeat(abt.shape[0], axis=0)
@@ -33,29 +49,37 @@ class Base_Graph:
         tmp[tmp <= 1e-9] = 1e-9
         res = np.sqrt(tmp)
         res[np.diag_indices_from(res)] = 0
-        return np.nan_to_num(res)
+        return np.nan_to_num(res, nan=inf)
 
-    @staticmethod
-    def _calc_best_conversion_threshold(g, num_of_nodes):
+    def calc_best_conversion_threshold(self, g, num_of_nodes):
         """
             inputs: one adjacent matrix of weighted graph
             using the graph density to choose the optimal threshold
             for undirected graph, density = 2 * m / n * (n - 1); for directed graph, density = m / n * (n - 1)
             m-number of edges; n-number of nodes
         """
-        potential_thresholds = np.arange(np.min(g[g > 0]), np.max(g[g > 0]), 0.1)
-        best_threshold = g[0][0]
+        g = abs(g)
+        upper_tri_idx = np.triu_indices(num_of_nodes, 1)
+        g = g[upper_tri_idx]
+        min_g, max_g = np.min(g), np.max(g)
+        step = (max_g - min_g) / 50
+        potential_thresholds = np.arange(min_g, max_g, step)
+        # potential_thresholds.append(max_g)
+        best_threshold = g[0]
         prev_density = 0
         best_diff = float('-inf')
         for i, threshold in enumerate(potential_thresholds):
             tmp = np.copy(g)
             idx_0 = tmp > threshold
-            idx_1 = tmp <= threshold
-            tmp[idx_0], tmp[idx_1] = 0, 1
-            tmp[np.diag_indices_from(tmp)] = 0
-            num_edges = np.count_nonzero(np.triu(tmp, 1) == 1)
+            idx_1 = tmp < threshold
+            if self.type == 'corr':
+                tmp[idx_0], tmp[idx_1] = 1, 0
+            elif self.type == 'dist':
+                tmp[idx_0], tmp[idx_1] = 0, 1
+            tmp[tmp == threshold] = 0
+            num_edges = np.count_nonzero(tmp == 1)
             curr_density = (2 * num_edges) / (num_of_nodes * (num_of_nodes - 1))
-            cur_diff = 0 if i == 0 else (curr_density - prev_density)
+            cur_diff = 0 if i == 0 else abs((curr_density - prev_density))
             if cur_diff > best_diff:
                 best_diff = cur_diff
                 best_threshold = threshold
@@ -63,7 +87,7 @@ class Base_Graph:
         return best_threshold
 
 
-class Phase_Space_Reconstruction_Graph(Base_Graph):
+class PhaseSpaceReconstructionGraph(BaseGraph):
     """
         constructing 2-d graphs from 1-d time series with each vector point of the reconstructed phase space represented
         by a single node and edge determined by the phase space distance
@@ -77,84 +101,56 @@ class Phase_Space_Reconstruction_Graph(Base_Graph):
     """
 
     def __init__(self,
-                 time_series,
                  time_delay,
                  dim,
                  sampling_interval=1,
-                 max_dim=10,
-                 mode='auto',
-                 measurement='corr'):
+                 type='corr',
+                 optimal=False,
+                 to_unweighted=False,
+                 ):
         """
             Phase_Space_Reconstruction_Graph
-            :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
             :param time_delay: delayed time interval used in phase space reconstruction
             :param dim: the dimension of embedding delayed time series (vectors)
-            :param max_dim: upper dimension bound used in false nearest neighbors method
             :param sampling_interval: used to sample the delayed time series, default is 1
-            :param mode: 'fixed' -> use pre-defined delayed time step and embedded dimension in PSRG; 'auto' -> use c-c method
+            :param type: different measurements to calculate connectivity among nodes (embedded vectors); 'l2' ->
+                         2-norm, 'corr' -> pearson correlation coefficient
+            :param optimal: False -> use pre-defined delayed time step and embedded dimension in PSRG; True -> use c-c method
                          and fnn method to determine the best value for delayed time step and embedded dimension automatically
-            :param measurement: different measurements to calculate connectivity among nodes (embedded vectors); 'dist' ->
-                                2-norm, 'corr' -> pearson correlation coefficient
-
-            :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
-                                    vectors in the reconstructed phase space
-            :param adj_matrix: resulting adjacent matrix of the generated graph (weighted)
-            :param w_to_unw_thresholds: thresholds to convert weighted graphs to unweighted graphs
+            :param to_unweighted: save thresholds or not
         """
-        self.time_series = time_series
-        self.number_of_time_series = self.time_series.shape[0]
-        self.number_of_time_points = self.time_series.shape[1]
-
         self.time_delay = time_delay
         self.dim = dim
         self.sampling_interval = sampling_interval
-        self.max_dim = max_dim
 
-        self.mode = mode
-        self.measurement = measurement
+        self.optimal = optimal
+        self.to_unweighted = to_unweighted
 
-        self.number_of_nodes = self.number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
-        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
-                                   dtype=np.float64)
-        self.w_to_unw_thresholds = list()
-        Base_Graph.__init__(self)
+        BaseGraph.__init__(self, type=type)
 
-    def generate(self):
+    def generate(self, one_time_series):
         """
         the time delayed embedding process
         """
-        for i in tqdm(range(self.number_of_time_series)):
-            if self.mode == 'auto':
-                self.time_delay = self._c_c_method(self.time_series[i, :])
-                self.dim = self._false_nearest_neighbor(self.time_series[i, :], self.time_delay, self.max_dim)
-                self.number_of_nodes = self.number_of_time_points - (
-                        self.dim - 1) * self.time_delay // self.sampling_interval
-                self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
-                                           dtype=np.float64)
+        number_of_time_points = one_time_series.shape[0]
+        if self.optimal:
+            self.time_delay = int(self._c_c_method(one_time_series, number_of_time_points))
+            self.dim = self._false_nearest_neighbor(one_time_series, self.time_delay)
+            number_of_nodes = number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
+        else:
+            if number_of_time_points < (self.dim - 1) * self.time_delay // self.sampling_interval:
+                print('[INFO] dimension size or delayed time is set too large, pls check the configuration files')
+                return
+            number_of_nodes = number_of_time_points - (self.dim - 1) * self.time_delay // self.sampling_interval
+        vector_list = self._psr_single_series(one_time_series, self.dim, self.time_delay)
+        weighted_adj = self.measurement_func(vector_list, vector_list)
 
-            vector_list = self._psr_single_series(self.time_series[i, :], self.dim, self.time_delay)
-            # print(self.number_of_nodes)
+        w_to_unw_threshold = None
+        if self.to_unweighted:
+            w_to_unw_threshold = self.calc_best_conversion_threshold(weighted_adj, number_of_nodes)
+        return weighted_adj, w_to_unw_threshold
 
-            weighted_adj = np.zeros((self.number_of_nodes, self.number_of_nodes))
-            if self.measurement == 'corr':
-                weighted_adj = self._calc_correlation_matrix(vector_list, vector_list)
-            elif self.measurement == 'dist':
-                weighted_adj = self._calc_euclidean_distances(vector_list, vector_list)
-            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
-            self.adj_matrix[i, :, :] = weighted_adj_new
-
-            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new, self.number_of_nodes)
-            self.w_to_unw_thresholds.append(w_to_unw_threshold)
-
-    def _psr_single_series(self, one_series, dim, time_delay):
-        n = one_series.shape[0]
-        space_points = n - (dim - 1) * time_delay // self.sampling_interval
-        res = np.zeros((space_points, dim))
-        for i in range(space_points):
-            res[i, :] = one_series[i: i + (dim - 1) * time_delay + 1:time_delay]
-        return res
-
-    def _c_c_method(self, one_series):
+    def _c_c_method(self, one_series, number_of_time_points):
         """
         using c-c method to determine the optimal time delay for phase space reconstruction
         ref: Kim, H_S, R. Eykholt, and J. D. Salas. "Nonlinear dynamics, delay times, and embedding windows."
@@ -163,28 +159,29 @@ class Phase_Space_Reconstruction_Graph(Base_Graph):
         n = one_series.shape[0]
         std = np.std(one_series)
         r = [0.5 * std, 1.0 * std, 1.5 * std, 2.0 * std]
-        max_t = self.number_of_time_points // (5 - 1)
-        t_series = np.arange(1, max_t + 1)
-        res = np.zeros(t_series.shape)
+        max_t = min(number_of_time_points // (5 - 1), 10)  # control the upper limit to 5
+        t_series = np.arange(1, max_t)  # exclude max
+        res = np.ones(t_series.shape[0])
 
         for t_i, t in enumerate(t_series):
-            tmp = np.zeros((4, 4))
+            delta_s = np.zeros(4)
             for dim_i, dim in enumerate(range(2, 6)):
-                for j, rj in enumerate(r):
-                    space_points = n - (dim - 1) * t // self.sampling_interval
-                    y = self._psr_single_series(one_series, dim, t)
-                    sup_norm_res = np.array(self._calc_sup_norm(y, y))
-                    sum_sup_norm_res = np.sum(np.heaviside(rj - sup_norm_res, 1.0))
-                    c = sum_sup_norm_res / ((space_points - 1) * space_points)
-                    c = np.nan_to_num(c, nan=1.0)
-                    tmp[dim_i][j] = c
-            res[t_i] = np.sum(tmp)
+                space_points = n - (dim - 1) * t // self.sampling_interval
+                y = self._psr_single_series(one_series, dim, t)
+                sup_norm_res = self._calc_sup_norm(y)
+                sn = np.tile(sup_norm_res, (len(r), 1))
+                rj = np.repeat(np.array(r, ndmin=2).T, sup_norm_res.shape[0], axis=1)
+                sum_sup_norm_res = np.sum(np.heaviside(rj - sn, 1.0), axis=1)
+                s = sum_sup_norm_res / ((space_points - 1) * space_points)
+                delta_s[dim_i] = np.max(s) - np.min(s)
+            res[t_i] = np.sum(delta_s) / 4
 
-        # find zero crossing point
-        xc, xi = pyaC.zerocross1d(t_series, res, getIndices=True)
-        return xc[0] if xc else t_series[0]
+        # find first local minima
+        extrema = np.diff(np.sign(np.diff(res)))
+        minima = np.argwhere(extrema < 0)
+        return t_series[minima[0] + 1] if minima.shape[0] else t_series[0]
 
-    def _false_nearest_neighbor(self, one_series, time_delay, max_dim, rtol=9, atol=2):
+    def _false_nearest_neighbor(self, one_series, time_delay, rtol=15, atol=2):
         """
         using false nearest neighbors (fnn) to determine the optimal embedding dimension of delayed subsequences
         ref: M. B. Kennel, R. Brown, and H. D. I. Abarbanel, Determining embedding dimension for phase-space reconstruction
@@ -194,39 +191,51 @@ class Phase_Space_Reconstruction_Graph(Base_Graph):
         :param atol: threshold for the 2nd criterion
         """
         n = one_series.shape[0]
-        Ra = np.std(one_series)
-        fnn = np.ones(max_dim)
-        for dim in range(2, max_dim + 1):
-            space_points = n - (dim - 1) * time_delay // self.sampling_interval
-            y = self._psr_single_series(one_series, dim, time_delay)
-            count = 0
-            for sp_i in range(space_points):
-                y0 = np.dot(np.ones((space_points, 1)), np.array(y[sp_i, :], ndmin=2))
-                dist = np.sqrt(np.sum((y - y0) ** 2, axis=1))
-                sorted_dist, sorted_idx = np.sort(dist), np.argsort(dist)
-                if sp_i + dim * time_delay < n and sorted_idx[1] + dim * time_delay < n:
-                    count += 1
-                    D = abs(one_series[sp_i + dim * time_delay] - one_series[sorted_idx[1] + dim * time_delay])
-                    R = np.sqrt(D ** 2 + sorted_dist[1] ** 2)
-                    if D / sorted_dist[1] > rtol or R / Ra > atol:
-                        fnn[dim - 1] += 1
-            fnn[dim - 1] = fnn[dim - 1] / count if count else 1
-            if not fnn[dim - 1]:
-                return dim
-        return np.argmin(fnn[1:]) + 2
+        Ra = np.std(one_series) if np.std(one_series) else 1e-6
+        max_dim = n // time_delay - 1  # make sure at least 2 space points
+        max_dim = min(max_dim, 5)  # control the upper limit to 5
+        fnn = np.zeros(max_dim - 2)
+        for dim in range(2, max_dim):
+            space_points = n - dim * time_delay // self.sampling_interval  # make sure index d+1 exists
+            y = self._psr_single_series(one_series, dim, time_delay)[:-time_delay, :]
+            y0 = np.repeat(y, space_points, axis=0)
+            y1 = np.tile(y, (space_points, 1))
+            dist = np.sqrt(np.sum((y1 - y0) ** 2, axis=1))
+            dist_with_matrix = np.reshape(dist, (space_points, space_points), order='C')
+            sorted_dist, sorted_idx = np.sort(dist_with_matrix), np.argsort(dist_with_matrix)
+            nearest_dist, nearest_idx = sorted_dist[:, 1], sorted_idx[:, 1]
+            ref_idx = np.arange(space_points)
+            D = np.abs(one_series[ref_idx + dim * time_delay] - one_series[nearest_idx + dim * time_delay])
+            R = np.sqrt(D ** 2 + nearest_dist ** 2)
+            nearest_dist[nearest_dist == 0] = 1e-6
+            condition1 = D / nearest_dist
+            condition2 = R / Ra
+            fnn_counts = np.sum(np.logical_or(condition1 > rtol, condition2 > atol))
+            fnn[dim - 2] = fnn_counts / space_points
+        return np.argmin(fnn) + 2
 
-    @staticmethod
-    def _calc_sup_norm(a, b):
-        res = []
-        m = min(a.shape[0], b.shape[0])
-        for i in range(m):
-            for j in range(m):
-                if i < j:
-                    res.append(np.max(np.abs(a[i, :] - b[i, :])))
+    def _psr_single_series(self, one_series, dim, time_delay):
+        n = one_series.shape[0]
+        space_points = n - (dim - 1) * time_delay // self.sampling_interval
+        res = np.zeros((space_points, dim))
+        for i in range(space_points):
+            res[i, :] = one_series[i: i + (dim - 1) * time_delay + 1:time_delay]
         return res
 
+    @staticmethod
+    def _calc_sup_norm(a):
+        size = a.shape[0]
+        # try to speedup the calculation
+        tmp1 = np.repeat(a, size, axis=0)
+        tmp2 = np.tile(a, (size, 1))
+        diff = np.abs(tmp1 - tmp2)
+        sup_norm = np.max(diff, axis=1)
+        sup_norm_in_matrix = np.reshape(sup_norm, (size, size), order='C')
+        upper_tri_idx = np.triu_indices(size)
+        return sup_norm_in_matrix[upper_tri_idx]
 
-class Amplitudes_Based_Graph(Base_Graph):
+
+class AmplitudesBasedGraph(BaseGraph):
     """
         constructing 2-d graphs from 1-d time series by grouping amplitude of each time sample, different amplitude groups
         will represent different nodes in the resulting graph, then we calculate moment vectors (contains k statistical moments)
@@ -235,54 +244,36 @@ class Amplitudes_Based_Graph(Base_Graph):
     """
 
     def __init__(self,
-                 time_series,
                  num_of_amp_groups=10,
                  num_of_moments=4,
-                 measurement='corr'):
+                 type='corr',
+                 to_unweighted=True
+                 ):
         """
-            :param time_series: original 1-d time series collections (a 2-d ndarray which is # time series * # time points)
             :param num_of_amp_groups: number of divided amplitude groups (equally divided between min and max)
-            :params num_of_moments: number of the first moments used to construct moments vector
-            :param measurement: different measurements to calculate connectivity among nodes (similarity embedded vectors);
+            :param num_of_moments: number of the first moments used to construct moments vector
+            :param type: different measurements to calculate connectivity among nodes (similarity embedded vectors);
                                 'dist' -> 2-norm, 'corr' -> pearson correlation coefficient
-
-            :param number_of_nodes: number of nodes in the generated graph, which is equal to the number of embedding
-                                    vectors in the reconstructed phase space
-            :param adj_matrix: resulting adjacent matrix of the generated graph (weighted)
-            :param w_to_unw_thresholds: thresholds to convert weighted graphs to unweighted graphs
+            :param to_unweighted: save thresholds or not
         """
-        self.time_series = time_series
-        self.number_of_time_series = self.time_series.shape[0]
-        self.number_of_time_points = self.time_series.shape[1]
-
         self.number_of_nodes = num_of_amp_groups
         self.num_of_moments = num_of_moments
-        self.measurement = measurement
+        self.to_unweighted = to_unweighted
 
-        self.adj_matrix = np.zeros((self.number_of_time_series, self.number_of_nodes, self.number_of_nodes),
-                                   dtype=np.float64)
-        self.w_to_unw_thresholds = list()
-        Base_Graph.__init__(self)
+        BaseGraph.__init__(self, type=type)
 
-    def generate(self):
+    def generate(self, one_time_series):
         """
-        the time delayed embedding process
+        the amplitude embedding process
         """
-        for i in tqdm(range(self.number_of_time_series)):
+        amp_groups = self._amplitude_partition(one_time_series)
+        amp_moments = self._calc_moments(amp_groups)
+        weighted_adj = self.measurement_func(amp_moments, amp_moments)
 
-            amp_groups = self._amplitude_partition(self.time_series[i, :])
-            amp_moments = self._calc_moments(amp_groups)
-
-            weighted_adj = np.zeros((self.number_of_nodes, self.number_of_nodes))
-            if self.measurement == 'corr':
-                weighted_adj = self._calc_correlation_matrix(amp_moments, amp_moments)
-            elif self.measurement == 'dist':
-                weighted_adj = self._calc_euclidean_distances(amp_moments, amp_moments)
-            weighted_adj_new = np.nan_to_num(weighted_adj, nan=1.0)
-            self.adj_matrix[i, :, :] = weighted_adj_new
-
-            w_to_unw_threshold = self._calc_best_conversion_threshold(weighted_adj_new, self.number_of_nodes)
-            self.w_to_unw_thresholds.append(w_to_unw_threshold)
+        w_to_unw_threshold = None
+        if self.to_unweighted:
+            w_to_unw_threshold = self.calc_best_conversion_threshold(weighted_adj, self.number_of_nodes)
+        return weighted_adj, w_to_unw_threshold
 
     def _amplitude_partition(self, one_series):
         """
@@ -293,13 +284,13 @@ class Amplitudes_Based_Graph(Base_Graph):
         if min_amp == max_amp:
             print('[INFO] cannot do amplitude partition !')
             return
-        # one_series_normalized = (one_series - min_v) / (max_v - min_v)
-        step = (max_amp - min_amp) / self.number_of_nodes
-        levels = np.arange(min_amp, max_amp + step, step).tolist()
+        bin_width = (max_amp - min_amp) / self.number_of_nodes
+        levels = [min_amp + i * bin_width for i in range(self.number_of_nodes)]
         for amp in one_series:
             index = bisect_left(levels, amp)  # boundary value belongs to previous bin
-            if not index == 0:
-                index -= 1
+            index -= 1
+            if index == 0:
+                index += 1
             res[index].append(amp)
         res = list(res.values())
         return res
@@ -310,6 +301,8 @@ class Amplitudes_Based_Graph(Base_Graph):
         """
         res = np.zeros((self.number_of_nodes, self.num_of_moments))
         for i in range(len(lists)):
+            if not lists[i]:
+                continue
             res[i, 0] = np.mean(lists[i])
             for m in range(2, self.num_of_moments + 1):
                 res[i, m - 1] = moment(lists[i], moment=m)
@@ -319,7 +312,7 @@ class Amplitudes_Based_Graph(Base_Graph):
         return res
 
 
-class Generalised_RDPG:
+class GeneralisedRDPG:
     """
     random dot product graph (RDPG) is a kind of random graph where each node is associated with a latent space (vector)
     and the probability between each pair of nodes is simply defined by the dot product result of their associated latent

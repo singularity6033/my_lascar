@@ -107,8 +107,8 @@ class SingleMatrixPlotOutputMethod(OutputMethod):
                 raw_data2 = pd.DataFrame(self.along_trace_results)
                 writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
                 writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))
-                raw_data1.to_excel(writer1, self.filename, float_format='%.5f')  # 2nd param is sheet name
-                raw_data2.to_excel(writer2, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                raw_data1.to_excel(writer1, self.filename)  # 2nd param is sheet name
+                raw_data2.to_excel(writer2, self.filename)  # 2nd param is sheet name
                 writer1.close()
                 writer2.close()
 
@@ -202,8 +202,8 @@ class SingleVectorPlotOutputMethod(OutputMethod):
                 raw_data2 = pd.DataFrame(self.along_trace_results)
                 writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
                 writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))
-                raw_data1.to_excel(writer1, self.filename, float_format='%.5f')  # 2nd param is sheet name
-                raw_data2.to_excel(writer2, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                raw_data1.to_excel(writer1, self.filename)  # 2nd param is sheet name
+                raw_data2.to_excel(writer2, self.filename)  # 2nd param is sheet name
                 writer1.close()
                 writer2.close()
 
@@ -251,9 +251,8 @@ class SingleOnePlotOutputMethod(OutputMethod):
         self.engine = engine
         self.along_trace_ticks.append(self.engine._number_of_processed_traces)
 
-        if isinstance(results, float):
-            self.one_result = results
-            self.along_trace_results.append(results)
+        self.one_result = results
+        self.along_trace_results.append(results)
 
     def _finalize(self):
         plt.title(self.figure_params['title'])
@@ -280,8 +279,8 @@ class SingleOnePlotOutputMethod(OutputMethod):
                 raw_data2 = pd.DataFrame(self.along_trace_results)
                 writer1 = pd.ExcelWriter(os.sep.join([raw_file_path1, self.filename + '.xlsx']))
                 writer2 = pd.ExcelWriter(os.sep.join([raw_file_path2, self.filename + '.xlsx']))
-                raw_data1.to_excel(writer1, self.filename, float_format='%.5f')  # 2nd param is sheet name
-                raw_data2.to_excel(writer2, self.filename, float_format='%.5f')  # 2nd param is sheet name
+                raw_data1.to_excel(writer1, self.filename)  # 2nd param is sheet name
+                raw_data2.to_excel(writer2, self.filename)  # 2nd param is sheet name
                 writer1.close()
                 writer2.close()
 

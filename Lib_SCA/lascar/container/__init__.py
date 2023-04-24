@@ -31,7 +31,7 @@ from .hdf5_container import Hdf5Container
 from .multiple_container import MultipleContainer
 from .simulation_container import BasicAesSimulationContainer
 from .simulation_container import AesSimulationContainer
-from .simulation_container import SimulatedPowerTraceContainer
+from .simulation_container import SimulatedPowerTraceContainer, SimulatedPowerTraceStandardContainer
 from .simulation_container import SimulatedPowerTraceFixedRandomContainer
 from .simulation_container import SimulatedPowerTraceContainerWithPlaintext
 from .container import Trace

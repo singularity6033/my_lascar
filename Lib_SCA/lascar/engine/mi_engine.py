@@ -1,4 +1,3 @@
-import collections
 import tracemalloc
 from bisect import bisect_left
 from collections import Counter
@@ -20,7 +19,6 @@ class CMI_Engine_By_Histogram(GuessEngine):
     the statistical test the implementation refers to the paper related to the continuous mutual information (CMI)
     proposed in Chothia, Tom, and Apratim Guha. "A statistical test for information leaks using continuous mutual
     information." 2011 IEEE 24th Computer Security Foundations Symposium. IEEE, 2011.
-
     the method used to estimate pdfs involved in the calculation of the cmi is the histogram-based estimation, which is
     implemented incrementally
     """
@@ -39,58 +37,161 @@ class CMI_Engine_By_Histogram(GuessEngine):
         :param name: name of the engine
         :param selection_function: takes a value and a guess_guess as input, returns a modelisation of the leakage for this (value/guess).
         :param num_bins: number of bins used in initialization of histogram estimation
+                         1. if == 0, it will be in an 'auto' mode, it will calculate current hist based on
+                         the current data and merge previous hist and current hist directly based on
+                         https://stackoverflow.com/questions/47085662/merge-histograms-with-different-ranges
+                         2. if > 0, it will update previous hist with current raw data with fixed bin sizes
         :param hist_boundary: pre-defined hist boundary, if == None, the boundary is based on data of the first batch
         :param guess_range: what are the values for the guess guess
         :param num_shuffles: random shuffle times used to obtain the reasonable statistical test value
         """
         self.num_bins = num_bins
         self.hist_boundary = hist_boundary
-        bin_width = (hist_boundary[1] - hist_boundary[0]) / num_bins
-        # levels for measurement y
-        self.levels = [hist_boundary[0] + i * bin_width for i in range(num_bins)]
-        self.levels.append(hist_boundary[1])
-        # levels for secret x
-        self.levels_sx = [0 + i * 1 for i in range(8)]
-        self.levels_sx.append(8)
-
         self.num_shuffles = num_shuffles
-
         self.results = None
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
 
     def _initialize(self):
+        # self.secret_x = None
+        # self.y_total = None
+
         self._mutual_information = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
         self._p_value = np.zeros((self._number_of_guesses,) + self._session.leakage_shape, np.double)
 
         self.number_of_time_samples = self._mutual_information.shape[1]
 
-        self.pdfs_for_pyx = np.zeros((self._number_of_guesses, self.num_shuffles + 1, self.number_of_time_samples, 9, self.num_bins))
-        self.pdfs_for_px = np.zeros((self._number_of_guesses, 8))
-        self.pdfs_for_py = np.zeros((self.number_of_time_samples, self.num_bins))
-
-        # as size for y given x is unknown
-        self.y_x = [[[collections.defaultdict(list)
+        # 4 dimensional list to store each pyx and yx for each key guess, test, time sample and secret x value (hamming)
+        self.pdfs_for_pyx = [[[[None] * 9
+                               for _ in range(self.number_of_time_samples)]
+                              for __ in range(self.num_shuffles + 1)]
+                             for ___ in range(self._number_of_guesses)]
+        self.y_x = [[[[None] * 9
                       for _ in range(self.number_of_time_samples)]
                      for __ in range(self.num_shuffles + 1)]
                     for ___ in range(self._number_of_guesses)]
+
+        # 3 dimensional list to store each px, py for each key guess, test, time sample
+        self.pdfs_for_px = [None] * self._number_of_guesses
+        self.pdfs_for_py = [None] * self.number_of_time_samples
 
         self._batch_count = 0
 
         self.size_in_memory += self._mutual_information.nbytes
         self.size_in_memory += self._p_value.nbytes
-        self.size_in_memory += self.pdfs_for_pyx.nbytes
-        self.size_in_memory += self.pdfs_for_px.nbytes
-        self.size_in_memory += self.pdfs_for_py.nbytes
+
+    def update_hist(self, prev_hist, cur_data):
+        """
+        this update_hist function directly update the previous histogram based on the current data
+        it may involve padding operations
+        """
+        counter_dic = Counter(cur_data.flatten())
+        min_data, max_data = min(counter_dic.keys()), max(counter_dic.keys())
+        new_hist, new_bin_edges = self._update_histogram_range(prev_hist, min_data, max_data)
+        for data_i in cur_data:
+            index = bisect_left(new_bin_edges, data_i)  # boundary value belongs to previous bin
+            if not index == 0:
+                index -= 1
+            new_hist[index] += 1
+        return new_hist, new_bin_edges
+
+    @staticmethod
+    def merge_hist(prev_hist, cur_hist):
+        """
+        this merge_hist function is based on two assumptions:
+        1. Recovered values are represented by the start of the bin they belong to.
+        2. The merge shall keep the highest bin resolution to avoid further loss of information
+        and shall completely encompass the intervals of the children histograms.
+        """
+
+        def extract_vals(hist):
+            # Recover values based on assumption 1.
+            values = [[y] * x for x, y in zip(hist[0], hist[1])]
+            # Return flattened list.
+            return [z for s in values for z in s]
+
+        def extract_bin_resolution(hist):
+            return hist[1][1] - hist[1][0]
+
+        def generate_num_bins(min_val, max_val, bin_resolutions):
+            # Generate number of bins necessary to satisfy assumption 2
+            return int(np.ceil((max_val - min_val) / bin_resolutions))
+
+        vals = extract_vals(cur_hist) + extract_vals(prev_hist)
+        bin_resolution = min(map(extract_bin_resolution, [cur_hist, prev_hist]))
+        num_bins = generate_num_bins(min(vals), max(vals), bin_resolution)
+
+        return np.histogram(vals, bins=num_bins)
+
+    @staticmethod
+    def auto_update_hist(prev_hist, cur_data):
+        """
+        this update_hist function directly update the previous histogram based on the current data
+        it may involve padding operations
+        """
+
+        def extract_vals(hist):
+            values = []
+            hist_count, bin_edges = hist[0], hist[1]
+            for i in range(len(hist[0])):
+                values += [(bin_edges[i] + bin_edges[i + 1]) / 2] * hist_count[i]
+            return values
+
+        prev_data = extract_vals(prev_hist)
+        new_data = prev_data.append(cur_data)
+        return np.histogram(new_data, bins='fd')
+
+    @staticmethod
+    def _update_histogram_range(prev_hist, min_data, max_data):
+        old_hist = prev_hist[0]
+        bin_edges = prev_hist[1]
+        bin_size = np.diff(bin_edges)[0]
+        min_boundary, max_boundary = np.min(bin_edges), np.max(bin_edges)
+        left_pad, right_pad = list(), list()
+        while min_data < min_boundary:
+            min_boundary = min_boundary - bin_size
+            left_pad.append(min_boundary)
+        while max_data > max_boundary:
+            max_boundary = max_boundary + bin_size
+            right_pad.append(max_boundary)
+        new_hist = np.concatenate((np.zeros(len(left_pad)), old_hist, np.zeros(len(right_pad))))
+        new_bin_edges = np.concatenate((np.array(left_pad[::-1]), bin_edges, np.array(right_pad)))
+        return new_hist, new_bin_edges
 
     def _histogram_estimation_px(self, data, key_guess_idx):
-        for data_i in data:
-            index = bisect_left(self.levels_sx, data_i) - 1 if not data_i == self.levels_sx[0] else 0
-            self.pdfs_for_px[key_guess_idx, index] += 1
+        if self._batch_count == 0:
+            if self.num_bins > 0:
+                current_hist_x = np.histogram(data, bins=self.num_bins) if not self.hist_boundary else \
+                    np.histogram(data, bins=8, range=(0, 8))
+            else:
+                current_hist_x = np.histogram(data, bins='auto') if not self.hist_boundary else \
+                    np.histogram(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+            self.pdfs_for_px[key_guess_idx] = current_hist_x
+        else:
+            previous_hist_x = self.pdfs_for_px[key_guess_idx]
+            if self.num_bins > 0:
+                update_hist_x = self.update_hist(previous_hist_x, data)
+            else:
+                current_hist_x = np.histogram(data, bins='auto')
+                update_hist_x = self.merge_hist(previous_hist_x, current_hist_x)
+            self.pdfs_for_px[key_guess_idx] = update_hist_x
 
     def _histogram_estimation_py(self, data, time_sample_idx):
-        for data_i in data:
-            index = bisect_left(self.levels, data_i) - 1 if not data_i == self.levels[0] else 0
-            self.pdfs_for_py[time_sample_idx, index] += 1
+        if self._batch_count == 0:
+            if self.num_bins > 0:
+                current_hist_y = np.histogram(data, bins=self.num_bins) if not self.hist_boundary else \
+                    np.histogram(data, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
+            else:
+                current_hist_y = np.histogram(data, bins='auto') if not self.hist_boundary else \
+                    np.histogram(data, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+            self.pdfs_for_py[time_sample_idx] = current_hist_y
+        else:
+            previous_hist_y = self.pdfs_for_py[time_sample_idx]
+            if self.num_bins > 0:
+                update_hist_y = self.update_hist(previous_hist_y, data)
+            else:
+                current_hist_y = np.histogram(data, bins='auto')
+                update_hist_y = self.merge_hist(previous_hist_y, current_hist_y)
+            self.pdfs_for_py[time_sample_idx] = update_hist_y
 
     def _histogram_estimation_p_yx(self, key_guess_idx, c_idx, time_sample_idx, y, secret_x_i, secret_x_i_set):
         """
@@ -100,19 +201,39 @@ class CMI_Engine_By_Histogram(GuessEngine):
         for secret_x_val in secret_x_i_set:
             secret_index = np.where(secret_x_i == secret_x_val)
             y_x = y[secret_index]
-            for y_x_i in y_x:
-                index = bisect_left(self.levels, y_x_i) - 1 if not y_x_i == self.levels[0] else 0
-                self.pdfs_for_pyx[key_guess_idx, c_idx, time_sample_idx, secret_x_val, index] += 1
+
+            if not self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]:
+                if self.num_bins > 0:
+                    current_hist_yx = np.histogram(y_x, bins=self.num_bins) if not self.hist_boundary else \
+                        np.histogram(y_x, bins=self.num_bins, range=(self.hist_boundary[0], self.hist_boundary[1]))
+                else:
+                    current_hist_yx = np.histogram(y_x, bins='auto') if not self.hist_boundary else \
+                        np.histogram(y_x, bins='auto', range=(self.hist_boundary[0], self.hist_boundary[1]))
+                self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = current_hist_yx
+            else:
+                previous_hist_yx = self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
+                if self.num_bins > 0:
+                    update_hist_yx = self.update_hist(previous_hist_yx, y_x)
+                else:
+                    current_hist_y = np.histogram(y_x, bins='auto')
+                    update_hist_yx = self.merge_hist(previous_hist_yx, current_hist_y)
+                self.pdfs_for_pyx[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = update_hist_yx
 
     def _store_yx(self, key_guess_idx, c_idx, time_sample_idx, y, secret_x_i, secret_x_i_set):
         for secret_x_val in secret_x_i_set:
             secret_index = np.where(secret_x_i == secret_x_val)
-            y_x = y[secret_index].flatten().tolist()
-            self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val] += y_x
+            y_x = y[secret_index]
+            # if the y_x is firstly stored
+            if not isinstance(self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val], np.ndarray):
+                self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = y_x
+            else:
+                prev = self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val]
+                self.y_x[key_guess_idx][c_idx][time_sample_idx][secret_x_val] = np.concatenate((prev, y_x), axis=0)
 
-    def _cal_integration_term(self, p_y, p_yx, yx):
-        p_y_dist = rv_histogram((p_y, np.array(self.levels)))
-        p_yx_dist = rv_histogram((p_yx, np.array(self.levels)))
+    @staticmethod
+    def _cal_integration_term(p_y, p_yx, yx):
+        p_y_dist = rv_histogram(p_y)
+        p_yx_dist = rv_histogram(p_yx)
         pyx = p_yx_dist.pdf(yx)
         sum_term = p_y_dist.pdf(yx)
         # extreme value processing
@@ -127,11 +248,13 @@ class CMI_Engine_By_Histogram(GuessEngine):
         # number of different x
         len_x = len(p_yx)
         cmi = 0
-        p_x_dist = rv_histogram((p_x, np.array(self.levels_sx)))
+        p_x_dist = rv_histogram(p_x)
         # calculate eqn (4)
         for xi in range(len_x):
             # integration part
             yx = np.unique(yx_total[xi])
+            if not p_yx[xi]:
+                continue
             integrate_term = self._cal_integration_term(p_y, p_yx[xi], yx)
             integrate_res = integrate_term if yx.shape[0] < 2 else integrate.trapezoid(integrate_term, yx)
             cmi += p_x_dist.pdf(xi) * integrate_res
@@ -146,13 +269,20 @@ class CMI_Engine_By_Histogram(GuessEngine):
         """
         print('[INFO] Batch #', self._batch_count + 1)
         secret_x = self._mapfunction(self._guess_range, batch.values)  # batch_size * guess_range
+        # store the total secret x
+        # self.secret_x = secret_x if not isinstance(self.secret_x, np.ndarray) else np.concatenate(
+        #     (self.secret_x, secret_x), axis=0)
+
+        # store the total y
         batch_leakages = batch.leakages
-
+        # self.y_total = batch_leakages if not isinstance(self.y_total, np.ndarray) else np.concatenate(
+        #     (self.y_total, batch_leakages), axis=0)
         # estimate the histogram of p_y for current batch
-        for ti in range(self.number_of_time_samples):
-            y = batch_leakages[:, ti]
-            self._histogram_estimation_py(y, ti)
+        for i in range(self.number_of_time_samples):
+            y = batch_leakages[:, i]
+            self._histogram_estimation_py(y, i)
 
+        print('[INFO] Processing pdfs estimation...')
         for i in tqdm(range(self._number_of_guesses)):
             print('[INFO] Processing Key Guess #', i)
             secret_x_i = secret_x[:, i]
@@ -174,7 +304,6 @@ class CMI_Engine_By_Histogram(GuessEngine):
                     np.random.shuffle(secret_x_i_copy)
                     self._histogram_estimation_p_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
                     self._store_yx(i, k, j, y, secret_x_i_copy, secret_x_i_set)
-
         self._batch_count += 1
 
     def _finalize(self):
@@ -183,8 +312,8 @@ class CMI_Engine_By_Histogram(GuessEngine):
             p_x = self.pdfs_for_px[i]
             for j in range(self.number_of_time_samples):
                 p_y = self.pdfs_for_py[j]
-                p_yx = self.pdfs_for_pyx[i][0][j]
-                yx = self.y_x[i][0][j]
+                p_yx = self.pdfs_for_pyx[i][0][j]  # list
+                yx = self.y_x[i][0][j]  # list
                 # calculate real cmi
                 real_cmi = self._cal_mutual_information(p_x, p_y, p_yx, yx)
                 self._mutual_information[i][j] = real_cmi
@@ -227,7 +356,6 @@ class CMI_Engine_By_KDE(GuessEngine):
     the implementation refers to the paper related to the continuous mutual information (CMI) proposed in
     Chothia, Tom, and Apratim Guha. "A statistical test for information leaks using continuous mutual information."
     2011 IEEE 24th Computer Security Foundations Symposium. IEEE, 2011.
-
     the method used to estimate pdfs involved in the calculation of the cmi is the kernel density based estimation
     but this is not implemented on an incremental manner (calculate only once)
     """

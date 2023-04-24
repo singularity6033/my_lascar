@@ -264,8 +264,8 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         # generate electronic noise
         mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
         cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
-        p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
-        # p_el = np.random.normal(loc=self.noise_mean_el, scale=self.noise_sigma_el, size=self.number_of_time_samples)
+        # p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
+        p_el = np.random.normal(loc=self.noise_mean_el, scale=self.noise_sigma_el, size=self.number_of_time_samples)
         p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
         # p_el.astype(np.float64)
 
@@ -360,6 +360,146 @@ class SimulatedPowerTraceContainer(AbstractContainer):
         for i in tqdm(range(idx_traces)):
             plt.plot(self[i].leakage)
         plt.show()
+
+
+class SimulatedPowerTraceStandardContainer(AbstractContainer):
+
+    def __init__(self, number_of_traces=None, config_params=None, seed=1337, **kwargs):
+        params = config_params
+        if number_of_traces:
+            self.number_of_trace = number_of_traces
+        else:
+            self.number_of_traces = params['number_of_traces']
+        self.number_of_bytes = params['number_of_bytes']
+        self.number_of_time_samples = params['number_of_time_samples']
+        self.attack_sample_point = params['attack_sample_point']
+        self.linear_coefficient_exp = float(params['linear_coefficient_exp'])
+        self.linear_coefficient_switch = float(params['linear_coefficient_switch'])
+        self.idx_exp = params['idx_exploitable_bytes']
+        self.idx_switch = params['idx_switching_noise_bytes']
+        if not len(self.idx_exp) + len(self.idx_switch) == self.number_of_bytes:
+            print('[INFO] total number of exploitable signal bytes and switching noise bytes should equal to '
+                  'number_of_byte')
+            return
+
+        self.noise_mean_el = params['noise_mean_el']
+        self.noise_sigma_el = params['noise_sigma_el']
+        self.no_time_samples = params['number_of_time_samples']
+        self.constant = float(params['constant'])
+        self.sp_curve = params['sp_curve']
+        self.bytes_curve = params['bytes_curve']
+        self.key = [i for i in range(params['number_of_bytes'])]
+        self.seed = seed
+        self.leakage_model_name = params['leakage_model_name']
+        self.masking = params['masking']
+        self.number_of_masking_bytes = params['number_of_masking_bytes']
+        self.shuffle = params['shuffle']
+        self.shuffle_range = params['shuffle_range']
+        self.shift = params['shift']
+        self.shift_range = params['shift_range']
+
+        if self.leakage_model_name == "default":
+            self.leakage_model = HammingPrecomputedModel()
+
+        self.value_dtype = np.dtype([("plaintext", np.uint8, (self.number_of_bytes, self.no_time_samples)),
+                                     ("leakage_model_output", np.uint8, (self.number_of_bytes, self.no_time_samples)),
+                                     ("key", np.uint8, (self.number_of_bytes, 1)),
+                                     ("power_components", np.float64, (3, self.no_time_samples)),
+                                     ("mask", np.uint8, (self.number_of_bytes, self.number_of_masking_bytes, self.no_time_samples))])
+        AbstractContainer.__init__(self, params['number_of_traces'], **kwargs)
+
+    @staticmethod
+    def generate_bytes_curve(idx_sbox):
+        n = len(idx_sbox)
+        curve = np.ones((n, 1), dtype=np.float64)
+        if n <= 2:
+            return curve
+        else:
+            for i in range(n // 2):
+                if n % 2 == 0:
+                    curve[i] /= 2 ** (n // 2 - i - 1)
+                    curve[n - i - 1] /= 2 ** (n // 2 - i - 1)
+                else:
+                    curve[i] /= 2 ** (n // 2 - i)
+                    curve[n - i - 1] /= 2 ** (n // 2 - i)
+        return curve
+
+    def generate_trace(self, idx):
+        np.random.seed(seed=self.seed ^ idx)  # for reproducibility
+        value = np.zeros((), dtype=self.value_dtype)
+
+        # we only encrypt attack_sample_point and 2 points after it (3 sample points in total)
+        value["key"] = np.array(self.key, ndmin=2).T
+        if self.attack_sample_point + 2 < self.number_of_time_samples:
+            value["plaintext"] = np.random.randint(0, 256, (self.number_of_bytes, self.no_time_samples), np.uint8)
+            cipher = value["plaintext"] ^ value["key"]
+            sbox_output = sbox[cipher]
+            if self.masking and self.number_of_masking_bytes > 0:
+                value["mask"] = np.random.randint(0, 256, (self.number_of_bytes, self.number_of_masking_bytes,
+                                                           self.no_time_samples), np.uint8)
+                r_bytes = np.zeros((self.number_of_bytes, self.no_time_samples))
+                for mask_i in range(self.number_of_masking_bytes):
+                    sbox_output ^= value["mask"][:, mask_i, :]
+                    mask_flatten = np.array(value["mask"][:, mask_i, :].flatten(), ndmin=2).T
+                    mask_bits = np.unpackbits(mask_flatten, axis=1)
+                    mask_hw = (mask_bits == 1).sum(axis=1)
+                    mask_hw = np.reshape(mask_hw, (self.number_of_bytes, self.no_time_samples))
+                    r_bytes += mask_hw
+
+            sbox_output_flatten = np.array(sbox_output.flatten(), ndmin=2).T
+            sbox_output_bits = np.unpackbits(sbox_output_flatten, axis=1)
+            hw = (sbox_output_bits == 1).sum(axis=1)
+            cipher_hw = np.reshape(hw, (self.number_of_bytes, self.no_time_samples))
+            value["leakage_model_output"] = cipher_hw
+            if self.masking and self.number_of_masking_bytes > 0:
+                value["leakage_model_output"] = np.add(value["leakage_model_output"], r_bytes)
+        else:
+            print('[INFO] attack sample point is too late, pls choose earlier ones')
+            return
+
+        # generate electronic noise
+        mean_el = np.array([self.noise_mean_el] * self.number_of_time_samples)
+        cov_el = np.diag([self.noise_sigma_el] * self.number_of_time_samples)
+        # p_el = np.random.multivariate_normal(mean_el, cov_el).T  # 1 * no_time_samples
+        p_el = np.random.normal(loc=self.noise_mean_el, scale=self.noise_sigma_el, size=self.number_of_time_samples)
+        p_el[self.attack_sample_point + 1] = p_el[self.attack_sample_point]
+
+        # generate curve of bytes
+        curve_exp, curve_switch = 1.0, 1.0
+        if self.bytes_curve:
+            curve_exp = self.generate_bytes_curve(self.idx_exp)
+            curve_switch = self.generate_bytes_curve(self.idx_switch)
+
+        # coefficients of exp (a) and switch (b)
+        # a[i] = idx_exp * curve_exp[i]; b[i] == idx_switch * curve_switch[i]
+        p_exp = self.linear_coefficient_exp * np.sum(value["leakage_model_output"][self.idx_exp] * curve_exp, axis=0)
+        p_switch = self.linear_coefficient_switch * np.sum(
+            value["leakage_model_output"][self.idx_switch] * curve_switch, axis=0)
+        for i in range(self.attack_sample_point, self.attack_sample_point + 3):
+            p_el[i] = p_el[i] * self.sp_curve[i - self.attack_sample_point]
+            p_exp[i] = p_exp[i] * self.sp_curve[i - self.attack_sample_point]
+            p_switch[i] = p_switch[i] * self.sp_curve[i - self.attack_sample_point]
+        power = p_exp + p_switch + p_el + self.constant
+
+        # 3 * no_time_samples, used in calculation of real snr
+        value["power_components"] = np.vstack((np.vstack((p_el, p_exp)), p_switch))
+
+        if self.shuffle:
+            if 0 <= self.shuffle_range[0] < self.number_of_time_samples \
+                    and self.shuffle_range[0] < self.shuffle_range[1] < self.number_of_time_samples:
+                np.random.shuffle(np.transpose(power[self.shuffle_range[0]:self.shuffle_range[1] + 1]))
+            else:
+                print('[INFO] invalid shuffle range...')
+
+        if self.shift:
+            if self.shift_range <= self.no_time_samples - (self.attack_sample_point + 2):
+                shift_step = np.random.randint(0, self.shift_range)
+                power = np.roll(power, shift_step)
+                power[:shift_step] = 0
+            else:
+                print('[INFO] invalid shift range...')
+
+        return Trace(power, value)
 
 
 class SimulatedPowerTraceFixedRandomContainer(AbstractContainer):
