@@ -2,18 +2,8 @@
 GraphTestEngine is a two-samples graph testing used to compute whether two graph samples G and H are drawn from
 the same distribution or not
 """
-import collections
-import gc
-from math import floor, log
 from collections import defaultdict
-from sklearn.preprocessing import OneHotEncoder
-from tqdm import tqdm
 import numpy as np
-from scipy.stats import norm, bernoulli, chi2, ks_2samp, cramervonmises_2samp, pearsonr, rv_histogram
-from scipy.linalg import orthogonal_procrustes
-from sklearn.cluster import KMeans
-from TracyWidom import TracyWidom
-from scipy.io import loadmat
 
 from . import PartitionerEngine
 from .graph_construction_basic import BaseGraph, PhaseSpaceReconstructionGraph, AmplitudesBasedGraph
