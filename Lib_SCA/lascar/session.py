@@ -274,6 +274,10 @@ class Session:
             if self._progressbar:
                 self_progressbar.update(offsets[1])
 
+        for engine in self.engines.values():
+            if engine.name not in ['mean', 'var']:
+                engine.clean()
+
         if self._progressbar:
             self_progressbar.finish()
 

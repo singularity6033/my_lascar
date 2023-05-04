@@ -55,7 +55,7 @@ from .graph_construction_attack_engine import A_GraphConstructionTraceAllCorr, A
 
 from .graph_testing_engine import GraphTestEnginePSR, GraphTestEngineAB, GraphTestEngineTraceBatch
 from .graph_testing_engine import GraphTestingEngineTraceAllCorr, GraphTestingEngineTraceAllDist
-from .graph_attack_engine import GraphAttackEngineTraceAllCorr, GraphAttackEngineTraceAllDist, GraphAttackEngineTraceBatch
+from .graph_attack_engine import GraphAttackEngineTraceAllCorr, GraphAttackEngineTraceAllDist
 
 # from .graph_testing_basic import TwoSamplesGraphTesting, GraphCommunityBasedTesting, Chi2Test
 # from .graph_attack_basic import SpectralDistance

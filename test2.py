@@ -48,7 +48,31 @@ from bisect import bisect_left, bisect_right, bisect
 # print(0 % 1)
 # x = np.searchsorted(l, [0, 0.5, 2, 10, 3.5], side='left')
 # index = bisect_left(l, [0.5, 2, 10, 3.5])
-# a = np.random.randn(2, 5, 5)
+a = np.random.randn(3, 6)
+# tmp = a
+# aa = a.flatten()
+# # b = a[:, 1]
+# c = np.repeat(aa, 3)
+# d = np.reshape(c, (-1, 3*6))
+# for i in range(3):
+#     tmp = np.concatenate((tmp, a), axis=1)
+# s = 'sd_l2'
+# x = s[:2]
+b = np.where(a > 0)
+a[b[0], b[1]] = 100
+# old_hist_count = np.reshape(a, (3, 3, -1))
+# left_padding = np.zeros((3, 3, 1))
+# right_padding = np.zeros((3, 3, 1))
+# updated_hist_count = np.concatenate((left_padding, old_hist_count, right_padding), axis=-1)
+# updated_hist_count_1 = np.pad(old_hist_count,
+#                             ((0, 0), (0, 0), (1, 1)),
+#                             'constant',
+#                             constant_values=(0, 0))
+# hist_counts = np.reshape(updated_hist_count, (3, 12))
+# x = not a.all()
+# y = np.empty(10)
+# print(y.shape[0])
+# z = not y.all()
 # idx = np.triu_indices(5, 1)
 # b = a[idx]
 # 5)
@@ -130,9 +154,8 @@ from bisect import bisect_left, bisect_right, bisect
 # c = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 from real_traces_generator import real_trace_container_random
 
-b = np.array([[8, 9, 10], [-1, 0, 0]])
-a = np.array([[1, 2, 3], [4, 5, 6]])
-
+# b = np.array([[8, 9, 10], [-1, 0, 0]])
+# a = np.array([[1, 2, 3], [4, 5, 6]])
 
 # x = pearsonr(a, a)
 # b = np.linalg.norm(a, np.inf, axis=1)
@@ -160,16 +183,16 @@ a = np.array([[1, 2, 3], [4, 5, 6]])
 # data = np.array(df)[1:, 1:]
 # res = unravel_index(data.argmax(), data.shape)
 
-container, t_info = real_trace_container_random(
-    dataset_path='/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
-    num_traces=2000,
-    t_start=0,
-    t_end=1262)
+# container, t_info = real_trace_container_random(
+#     dataset_path='/media/mldadmin/home/s122mdg34_05/my_lascar/sca_real_data/EM_Sync_TVLA_1M.sx',
+#     num_traces=2000,
+#     t_start=0,
+#     t_end=1262)
 
 # pl = container[:].values['plaintexts']
-xx = container[:].values
-for x in xx:
-    print(x['plaintexts'])
+# xx = container[:].values
+# for x in xx:
+#     print(x['plaintexts'])
 # cp = container[:].values['ciphertexts']
 # pl = pl[0, 0]
 # cp = cp[0, 0]
@@ -194,7 +217,8 @@ for x in xx:
 
 # xx = np.corrcoef(a, b)
 # print(np.sort(data)[::-1])
-# data_path = './results_attack/graph_attack/fr_v1/#gt_dist_#dmode_edit_#trace_50k'
-# df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
-# data = np.array(df)[1:, 1:]
-# res = np.argmin(data, axis=1)
+data_path = './results_attack/graph_attack/ascad_v1/#gt_corr_#dmode_edit_#trace_55k'
+df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
+data = np.array(df)[1:, 1:]
+res = np.argmax(data, axis=0)
+print(res)

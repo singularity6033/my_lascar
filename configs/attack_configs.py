@@ -72,14 +72,14 @@ graph_attack_aio_config = {
     # 'dataset_path': './sca_real_data/EM_TVLA_1M.sx',
     'dataset_path': './sca_real_data/dataset_from_sca_toolkit/ascad/ascad.sx',
 
-    'num_traces': 50000,
+    'num_traces': 5000000,
     'attack_byte': 2,
     'no_of_key_guesses': 256,
 
-    'graph_type': 'dist',
+    'graph_type': 'corr',
 
-    'k': 600,
-    'd_mode': 'l2',
+    'k': 500,
+    'd_mode': 'sd_l2',
     'num_bins': 100,
 
     # engine name (trivial)
