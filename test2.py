@@ -4,8 +4,9 @@ from math import inf
 
 import pandas as pd
 from numpy import unravel_index
-from scipy.stats import norm, bernoulli, pearsonr, moment, describe, ks_2samp
+from scipy.stats import norm, bernoulli, pearsonr, moment, describe, ks_2samp, binom
 from sklearn.preprocessing import OneHotEncoder
+# x = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
 
 from Lib_SCA.hdf5_files_import import read_hdf5_proj
 from Lib_SCA.lascar import SimulatedPowerTraceFixedRandomContainer
@@ -48,18 +49,18 @@ from bisect import bisect_left, bisect_right, bisect
 # print(0 % 1)
 # x = np.searchsorted(l, [0, 0.5, 2, 10, 3.5], side='left')
 # index = bisect_left(l, [0.5, 2, 10, 3.5])
-a = np.random.randn(3, 6)
-# tmp = a
-# aa = a.flatten()
-# # b = a[:, 1]
-# c = np.repeat(aa, 3)
-# d = np.reshape(c, (-1, 3*6))
-# for i in range(3):
-#     tmp = np.concatenate((tmp, a), axis=1)
-# s = 'sd_l2'
-# x = s[:2]
-b = np.where(a > 0)
-a[b[0], b[1]] = 100
+# a = np.random.randn(3, 6)
+# # tmp = a
+# # aa = a.flatten()
+# # # b = a[:, 1]
+# # c = np.repeat(aa, 3)
+# # d = np.reshape(c, (-1, 3*6))
+# # for i in range(3):
+# #     tmp = np.concatenate((tmp, a), axis=1)
+# # s = 'sd_l2'
+# # x = s[:2]
+# b = np.where(a > 0)
+# a[b[0], b[1]] = 100
 # old_hist_count = np.reshape(a, (3, 3, -1))
 # left_padding = np.zeros((3, 3, 1))
 # right_padding = np.zeros((3, 3, 1))
@@ -214,11 +215,49 @@ from real_traces_generator import real_trace_container_random
 # updated_hist_counts = np.pad(to_mat, ((2, 2), (0, 0)), 'constant',
 #                              constant_values=(0, 0))
 # cxx = updated_hist_counts.flatten(order='F')
-
+# def _calc_chi2score(chi2_table):
+#     n = np.sum(chi2_table)
+#     col_sum = np.sum(chi2_table, axis=0, keepdims=True)
+#     row_sum = np.sum(chi2_table, axis=1, keepdims=True)
+#     expected_freq = np.dot(row_sum, col_sum) / n
+#     tmp1 = (chi2_table - expected_freq) ** 2
+#     tmp2 = np.divide(tmp1, expected_freq, out=np.zeros_like(tmp1), where=expected_freq != 0)
+#     chi_score = np.sum(tmp2)
+#     return chi_score
+#
+# a = np.array([[1, 3, 5, 2, 10, 2, 1], [10, 1, 5, 9, 3, 7, 8]])
+# print(_calc_chi2score(a))
+# a = np.random.randn(3, 2, 6)
+# b = [a, a]
+# c = np.array(b)
+# d = np.sum(c, axis=(1, 2))
+# left_padding = np.zeros((3, 2, 2, 1))
+# right_padding = np.zeros((3, 2, 2, 1))
+# # a = np.array([[[1, 2, 4], [3, 4, 1]], [[2, 2, 0], [2, 1, 8]]])
+# b = np.reshape(a, (3, 2, 2, 3))
+# updated_hist_count = np.concatenate((left_padding, b, right_padding), axis=-1)
+# hist_counts = np.reshape(updated_hist_count,
+#                          (3, 2, 10))
+# hist_counts = np.transpose(a, (0, 2, 1))
+# cs = np.sum(a, axis=2, keepdims=True)
+# rs = np.sum(a, axis=1, keepdims=True)
+# b = cs @ rs
+# print(b[1])
+# b = np.reshape(a, (3, 2, 3), order='C')
+# b = np.array(a[:2, 0], ndmin=2)
+# a = np.array([1, 2, 3, 4])
+# b = np.array([2, 1, 6, 7])
 # xx = np.corrcoef(a, b)
 # print(np.sort(data)[::-1])
-data_path = './results_attack/graph_attack/ascad_v1/#gt_corr_#dmode_edit_#trace_55k'
-df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
-data = np.array(df)[1:, 1:]
-res = np.argmax(data, axis=0)
-print(res)
+# a = [[1, 2, 3, 4], 2, 3, 4]
+# b = a
+# c = a.copy()
+# a[0][0] = 10
+data_path = './results_attack/graph_attack/ascad_v6_mb'
+filenames = os.listdir(data_path)
+for filename in filenames:
+    df = pd.read_excel(os.sep.join([data_path, filename, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
+    data = np.array(df)[1:, 1:]
+    # res = np.argmin(data, axis=0)
+    # if filename.split('_#')[-1] == 'trace_20k':
+    print(filename.split('_#')[0], filename.split('_#')[-2], np.argmin(data, axis=0), np.argmax(data, axis=0))

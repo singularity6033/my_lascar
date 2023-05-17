@@ -51,11 +51,13 @@ from .success_rate_engine import numerical_success_rate
 from .graph_construction_test_engine import T_GraphConstructionPSR, T_GraphConstructionAB, T_GraphConstructionTraceBatch
 from .graph_construction_test_engine import T_GraphConstructionTraceAllCorr, T_GraphConstructionTraceAllDist
 from .graph_construction_attack_engine import A_GraphConstructionPSR, A_GraphConstructionAB, A_GraphConstructionTraceBatch
-from .graph_construction_attack_engine import A_GraphConstructionTraceAllCorr, A_GraphConstructionTraceAllDist
+from .graph_construction_attack_engine import A_GraphConstructionTraceAllCorr_SB, A_GraphConstructionTraceAllCorr_MB, \
+    A_GraphConstructionTraceAllHistogram_SB, A_GraphConstructionTraceAllHistogram_MB
 
 from .graph_testing_engine import GraphTestEnginePSR, GraphTestEngineAB, GraphTestEngineTraceBatch
 from .graph_testing_engine import GraphTestingEngineTraceAllCorr, GraphTestingEngineTraceAllDist
-from .graph_attack_engine import GraphAttackEngineTraceAllCorr, GraphAttackEngineTraceAllDist
+from .graph_attack_engine import GraphAttackEngineTraceAllCorr_SB, GraphAttackEngineTraceAllCorr_MB, \
+    GraphAttackEngineTraceAllKSDist_SB, GraphAttackEngineTraceAllChi2_SB, GraphAttackEngineTraceAllChi2_MB
 
 # from .graph_testing_basic import TwoSamplesGraphTesting, GraphCommunityBasedTesting, Chi2Test
 # from .graph_attack_basic import SpectralDistance

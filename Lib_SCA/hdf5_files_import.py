@@ -26,7 +26,7 @@ def read_hdf5_proj(database_file,
 
     try:
         in_file = h5py.File(database_file, "r")
-        # key = in_file[ProjectDataSetTags.KEY.value][idx_srt:idx_end]
+        key = in_file[ProjectDataSetTags.KEY.value][idx_srt:idx_end]
     except:
         print("Error: can't open HDF5 file '%s' for reading (it might be malformed) ..." % database_file)
         sys.exit(-1)

@@ -77,6 +77,6 @@ def real_trace_container_random(dataset_path, num_traces, t_start, t_end, offset
 
 
 if __name__ == '__main__':
-    x = real_trace_container('./sca_real_data/dataset_from_sca_toolkit/ascad/ascad.sx', 1000, 0, 1262)
+    x = real_trace_container_random('./sca_real_data/EM_Sync_TVLA_1M.sx', 1000, 0, 1262)
     v = x[0][:].values
 

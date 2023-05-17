@@ -1,11 +1,13 @@
+from scipy.stats import binom
 from tqdm import tqdm
 import numpy as np
 
 from . import A_GraphConstructionPSR, A_GraphConstructionAB, A_GraphConstructionTraceBatch
-from . import A_GraphConstructionTraceAllCorr, A_GraphConstructionTraceAllDist
+from . import A_GraphConstructionTraceAllCorr_SB, A_GraphConstructionTraceAllHistogram_SB, \
+    A_GraphConstructionTraceAllCorr_MB, A_GraphConstructionTraceAllHistogram_MB
 
 
-class GraphAttackEngineTraceAllCorr(A_GraphConstructionTraceAllCorr):
+class GraphAttackEngineTraceAllCorr_SB(A_GraphConstructionTraceAllCorr_SB):
     """
     dpa type of attack, using spectral distance (eigenvalue distance) as measurement
     """
@@ -15,11 +17,13 @@ class GraphAttackEngineTraceAllCorr(A_GraphConstructionTraceAllCorr):
                  selection_function,
                  guess_range,
                  solution=-1,
-                 k=100,
-                 mode='sd_l2',
+                 dist_type='edit_dist',
+                 sd_params=None,
                  jit=True
                  ):
-        A_GraphConstructionTraceAllCorr.__init__(self, name, selection_function, guess_range, mode, k, solution, jit)
+        self.dist_type = dist_type
+        self.sd_params = sd_params
+        A_GraphConstructionTraceAllCorr_SB.__init__(self, name, selection_function, guess_range, dist_type, solution, jit)
 
     def _finalize(self):
         # return self._finalize_function()
@@ -43,7 +47,10 @@ class GraphAttackEngineTraceAllCorr(A_GraphConstructionTraceAllCorr):
                 numerator_f[mask_f, mask_f], denominator_f[mask_f, mask_f] = 0.0, 1.0
                 graph_samples_r = np.abs(np.nan_to_num(numerator_r / denominator_r))
                 graph_samples_f = np.abs(np.nan_to_num(numerator_f / denominator_f))
-                self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f)
+                if self.dist_type == 'spectral_dist':
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f, params=self.sd_params)
+                else:
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f)
         self.results = self.results.T
         return self.results
 
@@ -56,7 +63,7 @@ class GraphAttackEngineTraceAllCorr(A_GraphConstructionTraceAllCorr):
         cuda.current_context().reset()
 
 
-class GraphAttackEngineTraceAllDist(A_GraphConstructionTraceAllDist):
+class GraphAttackEngineTraceAllCorr_MB(A_GraphConstructionTraceAllCorr_MB):
     """
     dpa type of attack, using spectral distance (eigenvalue distance) as measurement
     """
@@ -65,13 +72,78 @@ class GraphAttackEngineTraceAllDist(A_GraphConstructionTraceAllDist):
                  name,
                  selection_function,
                  guess_range,
+                 solution=-1,
+                 dist_type='edit_dist',
+                 sd_params=None,
+                 jit=True
+                 ):
+        self.dist_type = dist_type
+        self.sd_params = sd_params
+        A_GraphConstructionTraceAllCorr_MB.__init__(self, name, selection_function, guess_range, dist_type, solution, jit)
+
+    def _finalize(self):
+        from numba import cuda
+        cuda.current_context().reset()
+        ## calculate real leakage graph
+        l_all = self.l_all / self._count_all
+        l2_all = self.l2_all / self._count_all
+        ll_all = self.ll_all / self._count_all
+        v_all = l2_all - l_all ** 2
+        numerator_all = ll_all - np.outer(l_all, l_all)
+        denominator_all = np.sqrt(np.outer(v_all, v_all))
+        mask_all = denominator_all == 0.0
+        numerator_all[mask_all], denominator_all[mask_all] = 0.0, 1.0
+        graph_all = np.abs(np.nan_to_num(numerator_all / denominator_all))
+
+        print('[INFO] calculating results...')
+        weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
+        for guess in range(self._number_of_guesses):
+            graph_dists = np.zeros(9)
+            for i in range(9):
+                m = self._count[guess, i]
+                li = self.l[guess, i] / m
+                l2i = self.l2[guess, i] / m
+                lli = self.ll[guess, i] / m
+                v = l2i - li ** 2
+                numerator = lli - np.outer(li, li)
+                denominator = np.sqrt(np.outer(v, v))
+                mask = denominator == 0.0
+                numerator[mask], denominator[mask] = 0.0, 1.0
+                graph_sample = np.abs(np.nan_to_num(numerator / denominator))
+                if self.dist_type == 'spectral_dist':
+                    graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params)
+                else:
+                    graph_dists[i] = self.graph_distance(graph_sample, graph_all)
+            self.results[guess] = np.sum(graph_dists * weights)
+        return self.results
+
+    def _clean(self):
+        del self.l
+        del self.l2
+        del self.ll
+        del self._count
+
+
+class GraphAttackEngineTraceAllKSDist_SB(A_GraphConstructionTraceAllHistogram_SB):
+    """
+    dpa type attack for single bit
+    convert all traces in to one graph, each column (along trace axis) represents one node
+    using Kolmogorov–Smirnov (K-S) statistics to calculate connectivity among nodes (embedded vectors)
+    """
+
+    def __init__(self,
+                 name,
+                 selection_function,
+                 guess_range,
                  num_bins=100,
-                 mode='sd_l2',
-                 k=100,
+                 dist_type='edit_dist',
+                 sd_params=None,
                  solution=-1,
                  jit=True
                  ):
-        A_GraphConstructionTraceAllDist.__init__(self, name, selection_function, guess_range, num_bins, mode, k, solution, jit)
+        self.dist_type = dist_type
+        self.sd_params = sd_params
+        A_GraphConstructionTraceAllHistogram_SB.__init__(self, name, selection_function, guess_range, num_bins, dist_type, solution, jit)
 
     def _finalize(self):
         # return self._finalize_function()
@@ -89,7 +161,10 @@ class GraphAttackEngineTraceAllDist(A_GraphConstructionTraceAllDist):
                 # more large the weight is, more close two nodes are
                 graph_samples_r = self._calc_kolmogorov_smirnov_distance(cdf_r_with_matrix, self.number_of_nodes)
                 graph_samples_f = self._calc_kolmogorov_smirnov_distance(cdf_f_with_matrix, self.number_of_nodes)
-                self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f)
+                if self.dist_type == 'spectral_dist':
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f, params=self.sd_params)
+                else:
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f)
         self.results = self.results.T
         return self.results
 
@@ -125,6 +200,142 @@ class GraphAttackEngineTraceAllDist(A_GraphConstructionTraceAllDist):
         # adj_matrix = np.reshape(ks_dist, (num_nodes, num_nodes))
         return adj_matrix
 
+
+class GraphAttackEngineTraceAllChi2_SB(A_GraphConstructionTraceAllHistogram_SB):
+    """
+    dpa type attack for single bit (8)
+    convert all traces in to one graph, each column (along trace axis) represents one node
+    using chi2 statistics to calculate connectivity among nodes (embedded vectors)
+    """
+
+    def __init__(self,
+                 name,
+                 selection_function,
+                 guess_range,
+                 num_bins=100,
+                 dist_type='edit_dist',
+                 sd_params=None,
+                 solution=-1,
+                 jit=True
+                 ):
+        self.dist_type = dist_type
+        self.sd_params = sd_params
+        A_GraphConstructionTraceAllHistogram_SB.__init__(self, name, selection_function, guess_range, num_bins, dist_type, solution, jit)
+
+    def _finalize(self):
+        from numba import cuda
+        cuda.current_context().reset()
+        print('[INFO] calculating results...')
+        for bit in tqdm(range(len(self._bits))):
+            for guess in range(self._number_of_guesses):
+                hist_r, hist_f = self.hist_counts[bit][guess][0], self.hist_counts[bit][guess][1]
+                hist_r_with_matrix = np.reshape(hist_r, (-1, self.number_of_nodes), order='F')
+                hist_f_with_matrix = np.reshape(hist_f, (-1, self.number_of_nodes), order='F')
+                graph_samples_r = self._chi2graph(hist_r_with_matrix)
+                graph_samples_f = self._chi2graph(hist_f_with_matrix)
+                if self.dist_type == 'spectral_dist':
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f, params=self.sd_params)
+                else:
+                    self.results[bit, guess] = self.graph_distance(graph_samples_r, graph_samples_f)
+        self.results = self.results.T
+        return self.results
+
+    def _clean(self):
+        del self.hist_ranges
+        del self.hist_counts
+        del self._count
+
+    def _chi2graph(self, hist):
+        num_bins = self.hist_ranges.shape[0]
+        hist = hist.T
+        tmp1 = np.repeat(hist, self.number_of_nodes, axis=0)
+        tmp2 = np.tile(hist, (self.number_of_nodes, 1))
+        dummy = np.repeat(tmp1, 2, axis=0)
+        dummy[1::2, :] = tmp2
+        chi2table_3d = np.reshape(dummy, (self.number_of_nodes ** 2, 2, num_bins), order='C')
+
+        col_sum = np.sum(chi2table_3d, axis=1, keepdims=True)
+        row_sum = np.sum(chi2table_3d, axis=2, keepdims=True)
+        n = np.sum(chi2table_3d, axis=(1, 2), keepdims=True)
+        expected_freq = (row_sum @ col_sum) / n
+
+        numerator = (chi2table_3d - expected_freq) ** 2
+        chi2_terms = np.divide(numerator, expected_freq, out=np.zeros_like(numerator), where=expected_freq != 0)
+        chi2_score = np.sum(chi2_terms, axis=(1, 2))
+        adj = np.reshape(chi2_score, (self.number_of_nodes, self.number_of_nodes), order='C')
+
+        return adj
+
+
+class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllHistogram_MB):
+    """
+    dpa type attack for multiple bits
+    convert all traces in to one graph, each column (along trace axis) represents one node
+    using chi2 statistics to calculate connectivity among nodes (embedded vectors)
+    """
+
+    def __init__(self,
+                 name,
+                 selection_function,
+                 guess_range,
+                 num_bins=100,
+                 dist_type='edit_dist',
+                 sd_params=None,
+                 solution=-1,
+                 jit=True
+                 ):
+        self.dist_type = dist_type
+        self.sd_params = sd_params
+        A_GraphConstructionTraceAllHistogram_MB.__init__(self, name, selection_function, guess_range, num_bins, dist_type,
+                                                         solution, jit)
+
+    def _finalize(self):
+        from numba import cuda
+        cuda.current_context().reset()
+        hist_all = self.hist_counts_all
+        hist_all_with_matrix = np.reshape(hist_all, (-1, self.number_of_nodes), order='F')
+        graph_all = self._chi2graph(hist_all_with_matrix)
+
+        print('[INFO] calculating results...')
+        weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
+        for guess in range(self._number_of_guesses):
+            graph_dists = np.zeros(9)
+            for i in range(9):
+                hist = self.hist_counts[guess][i]
+                hist_with_matrix = np.reshape(hist, (-1, self.number_of_nodes), order='F')
+                graph_sample = self._chi2graph(hist_with_matrix)
+                if self.dist_type == 'spectral_dist':
+                    graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params)
+                else:
+                    graph_dists[i] = self.graph_distance(graph_sample, graph_all)
+            self.results[guess] = np.sum(graph_dists * weights)
+        return self.results
+
+    def _clean(self):
+        del self.hist_ranges
+        del self.hist_counts
+        del self._count
+
+    def _chi2graph(self, hist):
+        num_bins = self.hist_ranges.shape[0]
+        hist = hist.T
+        tmp1 = np.repeat(hist, self.number_of_nodes, axis=0)
+        tmp2 = np.tile(hist, (self.number_of_nodes, 1))
+        dummy = np.repeat(tmp1, 2, axis=0)
+        dummy[1::2, :] = tmp2
+        chi2table_3d = np.reshape(dummy, (self.number_of_nodes ** 2, 2, num_bins), order='C')
+
+        col_sum = np.sum(chi2table_3d, axis=1, keepdims=True)
+        row_sum = np.sum(chi2table_3d, axis=2, keepdims=True)
+        n = np.sum(chi2table_3d, axis=(1, 2), keepdims=True)
+        expected_freq = (row_sum @ col_sum) / n
+
+        numerator = (chi2table_3d - expected_freq) ** 2
+        chi2_terms = np.divide(numerator, expected_freq, out=np.zeros_like(numerator), where=expected_freq != 0)
+        chi2_score = np.sum(chi2_terms, axis=(1, 2))
+        adj = np.reshape(chi2_score, (self.number_of_nodes, self.number_of_nodes), order='C')
+
+        return adj
 
 # class GraphAttackEngineTraceBatch(A_GraphConstructionTraceBatch):
 #     def __init__(self,

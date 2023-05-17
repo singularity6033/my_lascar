@@ -42,14 +42,14 @@ def cpa_attack(params, trace_params, output_path):
     def selection_function(
             value, guess, ab=attack_byte
     ):  # selection_with_guess function must take 2 arguments: value and guess
-        return hamming(sbox[value["plaintext"][ab][0] ^ guess])
+        return hamming(sbox[value["plaintexts"][ab] ^ guess])
 
     guess_range = range(params['no_of_key_guesses'])
 
     cpa_engine = CpaEngine(params['engine_name'],
                            selection_function,
                            guess_range,
-                           solution=0)
+                           solution=69)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -71,32 +71,32 @@ def cpa_attack(params, trace_params, output_path):
 
 if __name__ == '__main__':
     # for the single trail (just use parameters once)
-    # cpa_attack(cpa_config, normal_simulated_traces, output_path='./results_attack/cpa')
+    cpa_attack(cpa_config, normal_simulated_traces, output_path='./results_attack/cpa_real')
 
     # # for the multiple trails (parameters sweeping)
     # # initial parameters for CPA and simulated traces
-    gt_params = cpa_config
-    trace_info = normal_simulated_traces
-
-    # create .json file to save all parameters setting
-    json_config = JSONConfig('cpa_v1')
-
-    for m_number_of_traces in [5000, 10000, 50000, 100000, 200000, 500000, 1000000]:
-        for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
-            for shuffle_state in [True, False]:
-                for shift_state in [True, False]:
-                    trace_info['number_of_traces'] = m_number_of_traces
-                    trace_info['noise_sigma_el'] = m_noise_sigma_el
-                    trace_info['shuffle'] = shuffle_state
-                    trace_info['shift'] = shift_state
-                    # create '_id' to identify each record
-                    trace_info['_id'] = '_el_' + str(m_noise_sigma_el) + '_#shift_' + str(shift_state) + \
-                                        '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
-                    json_config.generate_config(trace_info)
-
-    # get .json file just created and read all parameters setting
-    dict_list = json_config.get_config()
-    for i, dict_i in tqdm(enumerate(dict_list)):
-        print('[INFO] Processing #', i)
-        cpa_attack(gt_params, dict_i, './results_attack/cpa/' + dict_i['_id'])
+    # gt_params = cpa_config
+    # trace_info = normal_simulated_traces
+    #
+    # # create .json file to save all parameters setting
+    # json_config = JSONConfig('cpa_v1')
+    #
+    # for m_number_of_traces in [5000, 10000, 50000, 100000, 200000, 500000, 1000000]:
+    #     for m_noise_sigma_el in [0, 0.25, 0.5, 1]:
+    #         for shuffle_state in [True, False]:
+    #             for shift_state in [True, False]:
+    #                 trace_info['number_of_traces'] = m_number_of_traces
+    #                 trace_info['noise_sigma_el'] = m_noise_sigma_el
+    #                 trace_info['shuffle'] = shuffle_state
+    #                 trace_info['shift'] = shift_state
+    #                 # create '_id' to identify each record
+    #                 trace_info['_id'] = '_el_' + str(m_noise_sigma_el) + '_#shift_' + str(shift_state) + \
+    #                                     '_#trace_' + str(trace_info['number_of_traces'] // 1000) + 'k'
+    #                 json_config.generate_config(trace_info)
+    #
+    # # get .json file just created and read all parameters setting
+    # dict_list = json_config.get_config()
+    # for i, dict_i in tqdm(enumerate(dict_list)):
+    #     print('[INFO] Processing #', i)
+    #     cpa_attack(gt_params, dict_i, './results_attack/cpa/' + dict_i['_id'])
 

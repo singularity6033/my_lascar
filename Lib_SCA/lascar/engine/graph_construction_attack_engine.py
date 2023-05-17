@@ -183,9 +183,9 @@ class A_GraphConstructionTraceBatch(GuessEngine):
 
 
 ### all traces converted into one graph ###
-class A_GraphConstructionTraceAllCorr(GuessEngine):
+class A_GraphConstructionTraceAllCorr_SB(GuessEngine):
     """
-    dpa type attack
+    dpa type attack for single bit
     convert all traces in to one graph, each column (along trace axis) represents one node
     using pearson correlation coefficient to calculate connectivity among nodes (embedded vectors)
     """
@@ -194,23 +194,19 @@ class A_GraphConstructionTraceAllCorr(GuessEngine):
                  name,
                  selection_function,
                  guess_range,
-                 mode,
-                 k,
+                 dist_type,
                  solution=-1,
                  jit=True
                  ):
         """
         :param selection_function: takes a value and a guess_guess as input, returns 0 or 1
         :param guess_range: what are the values for the guess guess
-        :param mode & k: used in graph distance
         :param solution: if known, indicate the correct guess guess
         :param jit: if true, using numba to acceleration, if your computer doesn't have gpu pls set it to false
         """
         self.BaseGraph = BaseGraph()
-        self.mode = mode
-        self.k = k
         self.solution = solution
-        self.graph_distance = GraphDistance(mode, k).graph_distance
+        self.graph_distance = GraphDistance(mode=dist_type).graph_distance
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
         self.logger.debug(
             'Creating A_GraphConstructionTraceAllCorr "%s" with %d guesses.', name, len(guess_range)
@@ -234,7 +230,7 @@ class A_GraphConstructionTraceAllCorr(GuessEngine):
                 )
 
             try:
-                cuda.select_device(0)
+                cuda.select_device(1)
                 f = jit(nopython=True)(self._function)
                 # gd = jit(nopython=True)(self.graph_distance)
             except Exception:
@@ -337,10 +333,119 @@ class A_GraphConstructionTraceAllCorr(GuessEngine):
                         self._count[bit_i, guess_i, idx] += lki.shape[0]
 
 
-class A_GraphConstructionTraceAllDist(GuessEngine):
+class A_GraphConstructionTraceAllCorr_MB(GuessEngine):
     """
+    dpa type attack for multiple bits
     convert all traces in to one graph, each column (along trace axis) represents one node
-    using Kolmogorov–Smirnov (K-S) statistics to calculate connectivity among nodes (embedded vectors)
+    using pearson correlation coefficient to calculate connectivity among nodes (embedded vectors)
+    """
+
+    def __init__(self,
+                 name,
+                 selection_function,
+                 guess_range,
+                 dist_type,
+                 solution=-1,
+                 jit=True
+                 ):
+        """
+        :param selection_function: takes a value and a guess_guess as input, returns 0 or 1
+        :param guess_range: what are the values for the guess guess
+        :param solution: if known, indicate the correct guess guess
+        :param jit: if true, using numba to acceleration, if your computer doesn't have gpu pls set it to false
+        """
+        self.BaseGraph = BaseGraph()
+        self.solution = solution
+        self.graph_distance = GraphDistance(mode=dist_type).graph_distance
+        GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
+        self.logger.debug(
+            'Creating A_GraphConstructionTraceAllCorr "%s" with %d guesses.', name, len(guess_range)
+        )
+
+    def _initialize(self):
+        self.number_of_nodes = self._session.leakage_shape[0]
+        self.l_all, self.l2_all, self.ll_all, self._count_all = 0, 0, 0, 0
+        self.l = np.zeros((self._number_of_guesses, 9, self.number_of_nodes), np.double)
+        self.l2 = np.zeros((self._number_of_guesses, 9, self.number_of_nodes), np.double)
+        self.ll = np.zeros((self._number_of_guesses, 9, self.number_of_nodes, self.number_of_nodes), np.double)
+        self._count = np.zeros((self._number_of_guesses, 9), np.double)
+        self.results = np.zeros(self._number_of_guesses)
+        if self.jit:
+            try:
+                from numba import jit, uint32, cuda
+            except Exception:
+                raise Exception(
+                    "Cannot jit without Numba. Please install Numba or consider turning off the jit option"
+                )
+
+            try:
+                cuda.select_device(2)
+                f = jit(nopython=True)(self._function)
+            except Exception:
+                raise Exception(
+                    "Numba could not jit this guess function. If it contains an assignment such as `value['your_string']`, Numba most likely cannot resolve it. Use the 'value_section' field of your container instead and set it to 'your_string'."
+                )
+
+            @jit(nopython=True)
+            def _dpa_partition(batchvalues, guess_range=self._guess_range):
+                out = np.zeros((guess_range.shape[0], batchvalues.shape[0]), dtype=np.uint32)
+                for guess in np.arange(guess_range.shape[0]):
+                    for v in np.arange(batchvalues.shape[0]):
+                        out[guess, v] = f(batchvalues[v], guess_range[guess])
+                return out
+
+            @jit(nopython=True)
+            def _increment_term(pv, batchleakages, guess_range=self._guess_range, num_node=self.number_of_nodes):
+                l = np.zeros((guess_range.shape[0], 9, num_node), np.double)
+                l2 = np.zeros((guess_range.shape[0], 9, num_node), np.double)
+                ll = np.zeros((guess_range.shape[0], 9, num_node, num_node), np.double)
+                count = np.zeros((guess_range.shape[0], 9,), np.double)
+                lk = batchleakages
+                for guess_i in np.arange(guess_range.shape[0]):
+                    pvi = pv[guess_i, :].flatten()
+                    for i in range(9):
+                        lki = lk[pvi == i]
+                        l[guess_i, i] += lki.sum(0)
+                        l2[guess_i, i] += (lki ** 2).sum(0)
+                        ll[guess_i, i] += np.dot(lki.T, lki)
+                        count[guess_i, i] += lki.shape[0]
+                return l, l2, ll, count
+
+            self._map_function = _dpa_partition
+            self._update_function = _increment_term
+
+    def _update(self, batch):
+        y = self._map_function(batch.values)
+        lk = batch.leakages
+        self.l_all += lk.sum(0)
+        self.l2_all += (lk ** 2).sum(0)
+        self.ll_all += np.dot(lk.T, lk)
+        self._count_all += lk.shape[0]
+
+        # numba gpu acceleration
+        if self.jit:
+            l, l2, ll, count = self._update_function(y, batch.leakages)
+            self.l += l
+            self.l2 += l2
+            self.ll += ll
+            self._count += count
+
+        # traditional version
+        else:
+            for guess_i in range(len(self._guess_range)):
+                yi = y[guess_i, :].flatten()
+                for i in range(9):
+                    lki = lk[yi == i]
+                    self.l[guess_i, i] += lki.sum(0)
+                    self.l2[guess_i, i] += (lki ** 2).sum(0)
+                    self.ll[guess_i, i] += np.dot(lki.T, lki)
+                    self._count[guess_i, i] += lki.shape[0]
+
+
+class A_GraphConstructionTraceAllHistogram_SB(GuessEngine):
+    """
+    dpa type attack for single bit
+    accumulate histogram counts for later processing
     """
 
     def __init__(self,
@@ -348,24 +453,20 @@ class A_GraphConstructionTraceAllDist(GuessEngine):
                  selection_function,
                  guess_range,
                  num_bins,
-                 mode,
-                 k,
+                 dist_type,
                  solution=-1,
                  jit=True
                  ):
         """
         :param selection_function: takes a value and a guess_guess as input, returns 0 or 1
         :param guess_range: what are the values for the guess guess
-        :param num_bins: used in ks calculation
-        :param mode & k: used in graph distance
+        :param num_bins: used in histogram calculation
         :param solution: if known, indicate the correct guess guess
         :param jit: if true, using numba to acceleration, if your computer doesn't have gpu pls set it to false
         """
         self.num_bins = num_bins
-        self.mode = mode
-        self.k = k
         self.solution = solution
-        self.graph_distance = GraphDistance(mode, k).graph_distance
+        self.graph_distance = GraphDistance(mode=dist_type).graph_distance
         self.BaseGraph = BaseGraph()
 
         GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
@@ -503,6 +604,144 @@ class A_GraphConstructionTraceAllDist(GuessEngine):
 
         time_sample_idx = 0
         for i, c_idx in enumerate(count_index):
+            if i > 0 and i % sample_size == 0:
+                time_sample_idx += 1
+            hist_count[c_idx + time_sample_idx * num_bins] += 1
+        return hist_count
+
+
+class A_GraphConstructionTraceAllHistogram_MB(GuessEngine):
+    """
+    dpa type attack for multiple bits
+    accumulate histogram counts for later processing
+    """
+
+    def __init__(self,
+                 name,
+                 selection_function,
+                 guess_range,
+                 num_bins,
+                 dist_type,
+                 solution=-1,
+                 jit=True
+                 ):
+        """
+        :param selection_function: takes a value and a guess_guess as input, returns 0 or 1
+        :param guess_range: what are the values for the guess guess
+        :param num_bins: used in histogram calculation
+        :param solution: if known, indicate the correct guess guess
+        :param jit: if true, using numba to acceleration, if your computer doesn't have gpu pls set it to false
+        """
+        self.num_bins = num_bins
+        self.solution = solution
+        self.graph_distance = GraphDistance(mode=dist_type).graph_distance
+        self.BaseGraph = BaseGraph()
+
+        GuessEngine.__init__(self, name, selection_function, guess_range, solution, jit)
+        self.logger.debug(
+            'Creating A_GraphConstructionTraceAllDist "%s" with %d guesses.', name, len(guess_range)
+        )
+
+    def _initialize(self):
+        self.number_of_nodes = self._session.leakage_shape[0]
+        self.hist_ranges = np.empty(self.num_bins)
+        self.hist_counts = np.zeros((self._number_of_guesses, 9, self.hist_ranges.shape[0] * self.number_of_nodes))
+        self.hist_counts_all = np.zeros(self.hist_ranges.shape[0] * self.number_of_nodes)
+        self._count = np.zeros((self._number_of_guesses, 9,), np.double)
+        self.results = np.zeros(self._number_of_guesses)
+        if self.jit:
+            try:
+                from numba import jit, uint32, cuda
+            except Exception:
+                raise Exception(
+                    "Cannot jit without Numba. Please install Numba or consider turning off the jit option"
+                )
+
+            try:
+                cuda.select_device(3)
+                f = jit(nopython=True)(self._function)
+                ch = jit(nopython=True)(self._calc_histogram)
+            except Exception:
+                raise Exception(
+                    "Numba could not jit this guess function. If it contains an assignment such as `value['your_string']`, Numba most likely cannot resolve it. Use the 'value_section' field of your container instead and set it to 'your_string'."
+                )
+
+            @jit(nopython=True)
+            def _dpa_partition(batchvalues, guess_range):
+                out = np.zeros((guess_range.shape[0], batchvalues.shape[0]), dtype=np.uint32)
+                for guess in np.arange(guess_range.shape[0]):
+                    for v in np.arange(batchvalues.shape[0]):
+                        out[guess, v] = f(batchvalues[v], guess_range[guess])
+                return out
+
+            @jit(nopython=True)
+            def _increment_hist(pv, batchleakages, hist_ranges, hist_counts, hist_counts_all, guess_range=self._guess_range,
+                                num_bins=self.num_bins, num_nodes=self.number_of_nodes):
+                count = np.zeros((guess_range.shape[0], 9,), np.double)
+                lk = batchleakages
+                sample_size = lk.shape[0]
+                min_data, max_data = np.min(lk), np.max(lk)
+
+                # update hist range
+                if not hist_ranges.all():
+                    bin_width = (max_data - min_data) / num_bins
+                    hist_ranges = np.array([min_data + i * bin_width for i in range(num_bins)])
+                else:
+                    bin_width = np.diff(hist_ranges)[0]
+                    min_boundary, max_boundary = np.min(hist_ranges), np.max(hist_ranges)
+                    left_pad, right_pad = list(), list()
+                    while min_data < min_boundary:
+                        min_boundary = min_boundary - bin_width
+                        left_pad.append(min_boundary)
+                    while max_data - bin_width > max_boundary:
+                        max_boundary = max_boundary + bin_width
+                        right_pad.append(max_boundary)
+                    hist_ranges = np.concatenate((np.array(left_pad[::-1]), hist_ranges, np.array(right_pad)))
+                    left_padding = np.zeros((len(guess_range), 9, num_nodes, len(left_pad)))
+                    right_padding = np.zeros((len(guess_range), 9, num_nodes, len(right_pad)))
+                    lp, rp = np.zeros((num_nodes, len(left_pad))), np.zeros((num_nodes, len(right_pad)))
+                    old_hist_counts = np.reshape(hist_counts, (len(guess_range), 9, num_nodes, -1))
+                    old_hist_counts_all = np.reshape(hist_counts_all, (num_nodes, -1))
+                    updated_hist_counts = np.concatenate((left_padding, old_hist_counts, right_padding), axis=-1)
+                    updated_hist_counts_all = np.concatenate((lp, old_hist_counts_all, rp), axis=-1)
+                    hist_counts = np.reshape(updated_hist_counts, (len(guess_range), 9, hist_ranges.shape[0] * num_nodes))
+                    hist_counts_all = updated_hist_counts_all.flatten()
+
+                lk_copy = lk.T
+                lk_flat = lk_copy.flatten()
+                count_index = np.searchsorted(hist_ranges, lk_flat, side='left')
+                count_index[lk_flat != hist_ranges[0]] -= 1
+                time_sample_idx = 0
+                for i, c_idx in enumerate(count_index):
+                    if i > 0 and i % sample_size == 0:
+                        time_sample_idx += 1
+                    hist_counts_all[c_idx + time_sample_idx * num_bins] += 1
+                hist_count_index = np.reshape(count_index, lk_copy.shape)
+
+                for guess_i in range(guess_range.shape[0]):
+                    pvi = pv[guess_i, :].flatten()
+                    for idx in range(9):
+                        hci = hist_count_index[:, pvi == idx]
+                        hc = ch(hci, hist_counts[guess_i, idx], num_bins)
+                        hist_counts[guess_i, idx] = hc
+                        count[guess_i, idx] += hci.shape[0]
+                return hist_ranges, hist_counts, hist_counts_all, count
+
+            self._map_function = _dpa_partition
+            self._update_function = _increment_hist
+
+    def _update(self, batch):
+        y = self._map_function(batch.values, self._guess_range)
+        hr, hc, hc_all, count = self._update_function(y, batch.leakages, self.hist_ranges, self.hist_counts, self.hist_counts_all)
+        self.hist_ranges, self.hist_counts, self.hist_counts_all = hr, hc, hc_all
+        self._count += count
+
+    @staticmethod
+    def _calc_histogram(hist_count_index, hist_count, num_bins):
+        sample_size = hist_count_index.shape[1]
+        hci_flat = hist_count_index.flatten()
+        time_sample_idx = 0
+        for i, c_idx in enumerate(hci_flat):
             if i > 0 and i % sample_size == 0:
                 time_sample_idx += 1
             hist_count[c_idx + time_sample_idx * num_bins] += 1
