@@ -96,11 +96,12 @@ class GraphAttackEngineTraceAllCorr_MB(A_GraphConstructionTraceAllCorr_MB):
         graph_all = np.abs(np.nan_to_num(numerator_all / denominator_all))
 
         print('[INFO] calculating results...')
-        weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
+        # weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
         for guess in range(self._number_of_guesses):
-            graph_dists = np.zeros(9)
-            for i in range(9):
+            graph_samples = np.zeros((5, self.number_of_nodes, self.number_of_nodes))
+            for i in range(5):
                 m = self._count[guess, i]
+                w = self._count[guess, i] / self._count_all
                 li = self.l[guess, i] / m
                 l2i = self.l2[guess, i] / m
                 lli = self.ll[guess, i] / m
@@ -110,11 +111,14 @@ class GraphAttackEngineTraceAllCorr_MB(A_GraphConstructionTraceAllCorr_MB):
                 mask = denominator == 0.0
                 numerator[mask], denominator[mask] = 0.0, 1.0
                 graph_sample = np.abs(np.nan_to_num(numerator / denominator))
-                if self.dist_type == 'spectral_dist':
-                    graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params)
-                else:
-                    graph_dists[i] = self.graph_distance(graph_sample, graph_all)
-            self.results[guess] = np.sum(graph_dists * weights)
+                graph_samples[i, :, :] = graph_sample
+
+                # if self.dist_type == 'spectral_dist':
+                #     graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params) * w
+                # else:
+                #     graph_dists[i] = self.graph_distance(graph_sample, graph_all) * w
+            # self.results[guess] = np.sum(graph_dists)
+            self.results[guess] = self.graph_distance(graph_samples, self.sd_params['k'])
         return self.results
 
     def _clean(self):

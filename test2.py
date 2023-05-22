@@ -225,11 +225,14 @@ from real_traces_generator import real_trace_container_random
 #     chi_score = np.sum(tmp2)
 #     return chi_score
 #
+# a = np.array([[1, 2, 3], [2, 1, 4], [3, 4, 1]])
 # a = np.array([[1, 3, 5, 2, 10, 2, 1], [10, 1, 5, 9, 3, 7, 8]])
 # print(_calc_chi2score(a))
 # a = np.random.randn(3, 2, 6)
 # b = [a, a]
 # c = np.array(b)
+# print(np.linalg.eig(a)[0])
+# print(np.linalg.eigvalsh(a))
 # d = np.sum(c, axis=(1, 2))
 # left_padding = np.zeros((3, 2, 2, 1))
 # right_padding = np.zeros((3, 2, 2, 1))
@@ -253,11 +256,21 @@ from real_traces_generator import real_trace_container_random
 # b = a
 # c = a.copy()
 # a[0][0] = 10
-data_path = './results_attack/graph_attack/ascad_v6_mb'
+data_path = './results_attack/graph_attack/ascad_v5_5_corr_mb'
 filenames = os.listdir(data_path)
+res = []
 for filename in filenames:
     df = pd.read_excel(os.sep.join([data_path, filename, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
     data = np.array(df)[1:, 1:]
     # res = np.argmin(data, axis=0)
-    # if filename.split('_#')[-1] == 'trace_20k':
-    print(filename.split('_#')[0], filename.split('_#')[-2], np.argmin(data, axis=0), np.argmax(data, axis=0))
+    if filename.split('_#')[-1] == 'trace_7.1k':
+        # res.append([filename.split('_#')[1], np.argmax(data, axis=0)])
+        if np.argmax(data, axis=0) == 224:
+            res.append(int(filename.split('_#')[1].split('_')[1]))
+    # print(sorted(res, key=lambda x: x[0]))
+res.sort()
+print(res)
+# data_path = './results_attack/yzs1/'
+# df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
+# data = np.array(df)[1:, 1:]
+# print(np.argmax(data, axis=0))

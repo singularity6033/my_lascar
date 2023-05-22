@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import ks_2samp
 import netcomp as nt
+from numpy.linalg import eigvalsh
 
 gamma_diff_save = list()
 miu_diff_save, rd_save, epsilon_save = [list(), list()], [list(), list()], [list(), list()]
@@ -22,7 +23,7 @@ class GraphDistance:
         elif mode == 'corr_dist':
             self.graph_distance = self.corr_dist
         elif mode == 'chi2_dist':
-            self.graph_distance = self.chi2_score
+            self.graph_distance = self.eig_chi2
 
     @staticmethod
     def spectral_dist(a, b, params):
@@ -63,6 +64,22 @@ class GraphDistance:
         return c
 
     @staticmethod
+    def eig_chi2(data, k):
+        n = data.shape[0]
+        chi2_table = np.zeros((n, k))
+        for i in range(n):
+            eig_vals = eigvalsh(data[i, :, :])[::-1]
+            chi2_table[i, :] = eig_vals[:k]
+        n = np.sum(chi2_table)
+        col_sum = np.sum(chi2_table, axis=0, keepdims=True)
+        row_sum = np.sum(chi2_table, axis=1, keepdims=True)
+        expected_freq = np.dot(row_sum, col_sum) / n
+        tmp1 = (chi2_table - expected_freq) ** 2
+        tmp2 = np.divide(tmp1, expected_freq, out=np.zeros_like(tmp1), where=expected_freq != 0)
+        chi2_score = np.sum(tmp2)
+        return chi2_score
+
+    @staticmethod
     def chi2_score(data, num_bins):
         min_data, max_data = np.min(data), np.max(data)
         bin_width = (max_data - min_data) / num_bins
@@ -87,5 +104,5 @@ class GraphDistance:
         expected_freq = np.dot(row_sum, col_sum) / n
         tmp1 = (chi2_table - expected_freq) ** 2
         tmp2 = np.divide(tmp1, expected_freq, out=np.zeros_like(tmp1), where=expected_freq != 0)
-        chi_score = np.sum(tmp2)
-        return chi_score
+        chi2_score = np.sum(tmp2)
+        return chi2_score

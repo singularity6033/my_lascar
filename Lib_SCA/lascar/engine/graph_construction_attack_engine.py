@@ -365,10 +365,11 @@ class A_GraphConstructionTraceAllCorr_MB(GuessEngine):
     def _initialize(self):
         self.number_of_nodes = self._session.leakage_shape[0]
         self.l_all, self.l2_all, self.ll_all, self._count_all = 0, 0, 0, 0
-        self.l = np.zeros((self._number_of_guesses, 9, self.number_of_nodes), np.double)
-        self.l2 = np.zeros((self._number_of_guesses, 9, self.number_of_nodes), np.double)
-        self.ll = np.zeros((self._number_of_guesses, 9, self.number_of_nodes, self.number_of_nodes), np.double)
-        self._count = np.zeros((self._number_of_guesses, 9), np.double)
+        self.l = np.zeros((self._number_of_guesses, 5, self.number_of_nodes), np.double)
+        self.l2 = np.zeros((self._number_of_guesses, 5, self.number_of_nodes), np.double)
+        self.ll = np.zeros((self._number_of_guesses, 5, self.number_of_nodes, self.number_of_nodes), np.double)
+        self._count = np.zeros((self._number_of_guesses, 5), np.double)
+        self._count_all = 0
         self.results = np.zeros(self._number_of_guesses)
         if self.jit:
             try:
@@ -379,7 +380,7 @@ class A_GraphConstructionTraceAllCorr_MB(GuessEngine):
                 )
 
             try:
-                cuda.select_device(2)
+                cuda.select_device(0)
                 f = jit(nopython=True)(self._function)
             except Exception:
                 raise Exception(
@@ -396,19 +397,25 @@ class A_GraphConstructionTraceAllCorr_MB(GuessEngine):
 
             @jit(nopython=True)
             def _increment_term(pv, batchleakages, guess_range=self._guess_range, num_node=self.number_of_nodes):
-                l = np.zeros((guess_range.shape[0], 9, num_node), np.double)
-                l2 = np.zeros((guess_range.shape[0], 9, num_node), np.double)
-                ll = np.zeros((guess_range.shape[0], 9, num_node, num_node), np.double)
-                count = np.zeros((guess_range.shape[0], 9,), np.double)
+                l = np.zeros((guess_range.shape[0], 5, num_node), np.double)
+                l2 = np.zeros((guess_range.shape[0], 5, num_node), np.double)
+                ll = np.zeros((guess_range.shape[0], 5, num_node, num_node), np.double)
+                count = np.zeros((guess_range.shape[0], 5,), np.double)
                 lk = batchleakages
                 for guess_i in np.arange(guess_range.shape[0]):
                     pvi = pv[guess_i, :].flatten()
                     for i in range(9):
                         lki = lk[pvi == i]
-                        l[guess_i, i] += lki.sum(0)
-                        l2[guess_i, i] += (lki ** 2).sum(0)
-                        ll[guess_i, i] += np.dot(lki.T, lki)
-                        count[guess_i, i] += lki.shape[0]
+                        if i in [0, 1, 2]:
+                            idx = 0
+                        elif i in [6, 7, 8]:
+                            idx = 4
+                        else:
+                            idx = i-2
+                        l[guess_i, idx] += lki.sum(0)
+                        l2[guess_i, idx] += (lki ** 2).sum(0)
+                        ll[guess_i, idx] += np.dot(lki.T, lki)
+                        count[guess_i, idx] += lki.shape[0]
                 return l, l2, ll, count
 
             self._map_function = _dpa_partition
@@ -436,10 +443,16 @@ class A_GraphConstructionTraceAllCorr_MB(GuessEngine):
                 yi = y[guess_i, :].flatten()
                 for i in range(9):
                     lki = lk[yi == i]
-                    self.l[guess_i, i] += lki.sum(0)
-                    self.l2[guess_i, i] += (lki ** 2).sum(0)
-                    self.ll[guess_i, i] += np.dot(lki.T, lki)
-                    self._count[guess_i, i] += lki.shape[0]
+                    if i in [0, 1, 2]:
+                        idx = 0
+                    elif i in [6, 7, 8]:
+                        idx = 4
+                    else:
+                        idx = i-2
+                    self.l[guess_i, idx] += lki.sum(0)
+                    self.l2[guess_i, idx] += (lki ** 2).sum(0)
+                    self.ll[guess_i, idx] += np.dot(lki.T, lki)
+                    self._count[guess_i, idx] += lki.shape[0]
 
 
 class A_GraphConstructionTraceAllHistogram_SB(GuessEngine):

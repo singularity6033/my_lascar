@@ -74,18 +74,18 @@ graph_attack_aio_config = {
     # 'dataset_path': './sca_real_data/EM_TVLA_1M.sx',
     'dataset_path': './sca_real_data/dataset_from_sca_toolkit/ascad/ascad.sx',
 
-    'num_traces': 5000,
+    'num_traces': 200000,
     'attack_byte': 2,
     'no_of_key_guesses': 256,
 
     'graph_type': 'corr',
     ## spectral_dist, vertex_edge_dist, corr_dist, chi2_dist, deltacon0_dist, resistance_dist
-    'dist_type': 'spectral_dist',
+    'dist_type': 'chi2_dist',
 
     # if use spectral_dist
-    'sd_params': {'k': 500,
+    'sd_params': {'k': 10,
                   'p': 2,  # p-norm ex: 1, np.inf'
-                  'kind': 'laplacian',  # 'laplacian', 'laplacian_norm', 'adjacency'
+                  'kind': 'adjacency',  # 'laplacian', 'laplacian_norm', 'adjacency'
                   },
 
     # use in histogram estimation

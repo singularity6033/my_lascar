@@ -70,36 +70,20 @@ if __name__ == '__main__':
     # graph_attack_aio_config['dataset_path'] = dataset_path
     engine_configs = graph_attack_aio_config
     # engine_configs['sd_params']['kind'] = 'laplacian'
-    # graph_attack_mb_aio(graph_attack_aio_config, trace_info, output_path='./results_attack/yzs')
+    # graph_attack_mb_aio(graph_attack_aio_config, trace_info, output_path='./results_attack/yzs1')
 
-    json_config_engine = JSONConfig('graph_attack_ascad_v6_mb')
-    num_traces = [60000]
-
-    # for m in num_traces:
-    #     for gt in ['corr', 'chi2']:
-    #         for dist_type in ['vertex_edge_dist', 'deltacon0_dist', 'resistance_dist']:
-    #             engine_configs['num_traces'] = m
-    #             engine_configs['graph_type'] = gt
-    #             engine_configs['dist_type'] = dist_type
-    #             engine_configs['_id'] = '#gt_' + gt + '_#dmode_' + dist_type + '_#trace_' + str(m // 1000) + 'k'
-    #             json_config_engine.generate_config(engine_configs)
-    #
-    # configs = json_config_engine.get_config()
-    # for i, config in tqdm(enumerate(configs)):
-    #     print('[INFO] Processing #', i)
-    #     graph_attack_mb_aio(config,
-    #                         trace_info,
-    #                         output_path='./results_attack/graph_attack/ascad_v4_mb/' + config['_id'])
+    json_config_engine = JSONConfig('graph_attack_ascad_v5_corr_mb')
+    num_traces = [7100, 7200, 7300, 7400]
 
     for m in num_traces:
-        for gt in ['corr', 'chi2']:
-            for dist_type in ['spectral_dist']:
-                for xx in ['laplacian', 'laplacian_norm']:
+        for gt in ['corr']:
+            for dist_type in ['chi2_dist']:
+                for k in range(10, 700, 10):
                     engine_configs['num_traces'] = m
                     engine_configs['graph_type'] = gt
                     engine_configs['dist_type'] = dist_type
-                    engine_configs['sd_params']['kind'] = xx
-                    engine_configs['_id'] = '#gt_' + gt + '_#kind_' + xx + '_#trace_' + str(m // 1000) + 'k'
+                    engine_configs['sd_params']['k'] = k
+                    engine_configs['_id'] = '#gt_' + gt + '_#k_' + str(k) + '_#trace_' + str(m / 1000) + 'k'
                     json_config_engine.generate_config(engine_configs)
 
     configs = json_config_engine.get_config()
@@ -107,4 +91,22 @@ if __name__ == '__main__':
         print('[INFO] Processing #', i)
         graph_attack_mb_aio(config,
                             trace_info,
-                            output_path='./results_attack/graph_attack/ascad_v6_mb/' + config['_id'])
+                            output_path='./results_attack/graph_attack/ascad_v5_5_corr_mb/' + config['_id'])
+
+    # for m in num_traces:
+    #     for gt in ['corr', 'chi2']:
+    #         for dist_type in ['spectral_dist']:
+    #             for xx in ['laplacian', 'laplacian_norm']:
+    #                 engine_configs['num_traces'] = m
+    #                 engine_configs['graph_type'] = gt
+    #                 engine_configs['dist_type'] = dist_type
+    #                 engine_configs['sd_params']['kind'] = xx
+    #                 engine_configs['_id'] = '#gt_' + gt + '_#kind_' + xx + '_#trace_' + str(m // 1000) + 'k'
+    #                 json_config_engine.generate_config(engine_configs)
+    #
+    # configs = json_config_engine.get_config()
+    # for i, config in tqdm(enumerate(configs)):
+    #     print('[INFO] Processing #', i)
+    #     graph_attack_mb_aio(config,
+    #                         trace_info,
+    #                         output_path='./results_attack/graph_attack/ascad_v6_mb/' + config['_id'])
