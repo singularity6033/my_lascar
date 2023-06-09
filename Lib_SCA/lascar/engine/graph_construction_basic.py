@@ -2,8 +2,7 @@ import collections
 from bisect import bisect_left
 
 import numpy as np
-from tqdm import tqdm
-from scipy.stats import norm, bernoulli, pearsonr, moment
+from scipy.stats import norm, bernoulli, moment
 from PyAstronomy import pyaC
 from math import inf
 

@@ -4,7 +4,7 @@ import numpy as np
 
 from . import A_GraphConstructionPSR, A_GraphConstructionAB, A_GraphConstructionTraceBatch
 from . import A_GraphConstructionTraceAllCorr_SB, A_GraphConstructionTraceAllHistogram_SB, \
-    A_GraphConstructionTraceAllCorr_MB, A_GraphConstructionTraceAllHistogram_MB
+    A_GraphConstructionTraceAllCorr_MB, A_GraphConstructionTraceAllHistogram_MB, A_GraphConstructionTraceAllChi2_MB
 
 
 class GraphAttackEngineTraceAllCorr_SB(A_GraphConstructionTraceAllCorr_SB):
@@ -271,7 +271,81 @@ class GraphAttackEngineTraceAllChi2_SB(A_GraphConstructionTraceAllHistogram_SB):
         return adj
 
 
-class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllHistogram_MB):
+# class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllHistogram_MB):
+#     """
+#     dpa type attack for multiple bits
+#     convert all traces in to one graph, each column (along trace axis) represents one node
+#     using chi2 statistics to calculate connectivity among nodes (embedded vectors)
+#     """
+#
+#     def __init__(self,
+#                  name,
+#                  selection_function,
+#                  guess_range,
+#                  num_bins=100,
+#                  dist_type='edit_dist',
+#                  sd_params=None,
+#                  solution=-1,
+#                  jit=True
+#                  ):
+#         self.dist_type = dist_type
+#         self.sd_params = sd_params
+#         A_GraphConstructionTraceAllHistogram_MB.__init__(self, name, selection_function, guess_range, num_bins, dist_type,
+#                                                          solution, jit)
+#
+#     def _finalize(self):
+#         from numba import cuda
+#         cuda.current_context().reset()
+#         # hist_all = self.hist_counts_all
+#         # hist_all_with_matrix = np.reshape(hist_all, (-1, self.number_of_nodes), order='F')
+#         # graph_all = self._chi2graph(hist_all_with_matrix)
+#
+#         print('[INFO] calculating results...')
+#         # weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
+#         for guess in range(self._number_of_guesses):
+#             # graph_dists = np.zeros(9)
+#             graph_samples = np.zeros((5, self.number_of_nodes, self.number_of_nodes))
+#             for i in range(5):
+#                 hist = self.hist_counts[guess][i]
+#                 hist_with_matrix = np.reshape(hist, (-1, self.number_of_nodes), order='F')
+#                 graph_sample = self._chi2graph(hist_with_matrix)
+#                 # if self.dist_type == 'spectral_dist':
+#                 #     graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params)
+#                 # else:
+#                 #     graph_dists[i] = self.graph_distance(graph_sample, graph_all)
+#                 graph_samples[i, :, :] = graph_sample
+#             # self.results[guess] = np.sum(graph_dists * weights)
+#             self.results[guess] = self.graph_distance(graph_samples, self.sd_params['k'])
+#         return self.results
+#
+#     def _clean(self):
+#         del self.hist_ranges
+#         del self.hist_counts
+#         del self._count
+#
+#     def _chi2graph(self, hist):
+#         num_bins = self.hist_ranges.shape[0]
+#         hist = hist.T
+#         tmp1 = np.repeat(hist, self.number_of_nodes, axis=0)
+#         tmp2 = np.tile(hist, (self.number_of_nodes, 1))
+#         dummy = np.repeat(tmp1, 2, axis=0)
+#         dummy[1::2, :] = tmp2
+#         chi2table_3d = np.reshape(dummy, (self.number_of_nodes ** 2, 2, num_bins), order='C')
+#
+#         col_sum = np.sum(chi2table_3d, axis=1, keepdims=True)
+#         row_sum = np.sum(chi2table_3d, axis=2, keepdims=True)
+#         n = np.sum(chi2table_3d, axis=(1, 2), keepdims=True)
+#         expected_freq = (row_sum @ col_sum) / n
+#
+#         numerator = (chi2table_3d - expected_freq) ** 2
+#         chi2_terms = np.divide(numerator, expected_freq, out=np.zeros_like(numerator), where=expected_freq != 0)
+#         chi2_score = np.sum(chi2_terms, axis=(1, 2))
+#         adj = np.reshape(chi2_score, (self.number_of_nodes, self.number_of_nodes), order='C')
+#
+#         return adj
+
+
+class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllChi2_MB):
     """
     dpa type attack for multiple bits
     convert all traces in to one graph, each column (along trace axis) represents one node
@@ -282,7 +356,6 @@ class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllHistogram_MB):
                  name,
                  selection_function,
                  guess_range,
-                 num_bins=100,
                  dist_type='edit_dist',
                  sd_params=None,
                  solution=-1,
@@ -290,38 +363,25 @@ class GraphAttackEngineTraceAllChi2_MB(A_GraphConstructionTraceAllHistogram_MB):
                  ):
         self.dist_type = dist_type
         self.sd_params = sd_params
-        A_GraphConstructionTraceAllHistogram_MB.__init__(self, name, selection_function, guess_range, num_bins, dist_type,
-                                                         solution, jit)
+        A_GraphConstructionTraceAllChi2_MB.__init__(self, name, selection_function, guess_range, dist_type, solution, jit)
 
     def _finalize(self):
-        from numba import cuda
-        cuda.current_context().reset()
-        hist_all = self.hist_counts_all
-        hist_all_with_matrix = np.reshape(hist_all, (-1, self.number_of_nodes), order='F')
-        graph_all = self._chi2graph(hist_all_with_matrix)
-
-        print('[INFO] calculating results...')
-        weights = binom.pmf([0, 1, 2, 3, 4, 5, 6, 7, 8], 8, 0.5)
-        for guess in range(self._number_of_guesses):
-            graph_dists = np.zeros(9)
-            for i in range(9):
-                hist = self.hist_counts[guess][i]
-                hist_with_matrix = np.reshape(hist, (-1, self.number_of_nodes), order='F')
-                graph_sample = self._chi2graph(hist_with_matrix)
-                if self.dist_type == 'spectral_dist':
-                    graph_dists[i] = self.graph_distance(graph_sample, graph_all, params=self.sd_params)
-                else:
-                    graph_dists[i] = self.graph_distance(graph_sample, graph_all)
-            self.results[guess] = np.sum(graph_dists * weights)
+        for guess in tqdm(range(self._number_of_guesses)):
+            graph_samples = np.zeros((5, self.number_of_nodes, self.number_of_nodes))
+            for i in range(5):
+                graph_sample = self.l[guess][i]
+                g_max, g_min = np.max(graph_sample, axis=1, keepdims=True), np.min(graph_sample, axis=1, keepdims=True)
+                graph_sample_normalized = (graph_sample - g_min) / (g_max - g_min)
+                graph_samples[i, :, :] = self._chi2graph(graph_sample_normalized)
+            self.results[guess] = self.graph_distance(graph_samples, self.sd_params['k'])
         return self.results
 
     def _clean(self):
-        del self.hist_ranges
-        del self.hist_counts
         del self._count
 
     def _chi2graph(self, hist):
-        num_bins = self.hist_ranges.shape[0]
+        # hist is a matrix, each column vector represents a histogram for a time sample (node) to construct a chi2 graph without for loop
+        num_bins = hist.shape[0]
         hist = hist.T
         tmp1 = np.repeat(hist, self.number_of_nodes, axis=0)
         tmp2 = np.tile(hist, (self.number_of_nodes, 1))

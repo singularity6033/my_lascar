@@ -155,6 +155,7 @@ from bisect import bisect_left, bisect_right, bisect
 # c = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 from real_traces_generator import real_trace_container_random
 
+
 # b = np.array([[8, 9, 10], [-1, 0, 0]])
 # a = np.array([[1, 2, 3], [4, 5, 6]])
 
@@ -225,9 +226,16 @@ from real_traces_generator import real_trace_container_random
 #     chi_score = np.sum(tmp2)
 #     return chi_score
 #
+#
+# #
 # a = np.array([[1, 2, 3], [2, 1, 4], [3, 4, 1]])
-# a = np.array([[1, 3, 5, 2, 10, 2, 1], [10, 1, 5, 9, 3, 7, 8]])
+# a = np.array([[1, 3, 1, 2, 1, 1], [10, 1, 0, 9, 3, 7]])
+# b = np.max(a, axis=1, keepdims=True)
+# c = a-b
 # print(_calc_chi2score(a))
+# a1 = a[:, :3]
+# a2 = a[:, 3:]
+# print(_calc_chi2score(a1) + _calc_chi2score(a2))
 # a = np.random.randn(3, 2, 6)
 # b = [a, a]
 # c = np.array(b)
@@ -256,21 +264,21 @@ from real_traces_generator import real_trace_container_random
 # b = a
 # c = a.copy()
 # a[0][0] = 10
-data_path = './results_attack/graph_attack/ascad_v5_5_corr_mb'
-filenames = os.listdir(data_path)
-res = []
-for filename in filenames:
-    df = pd.read_excel(os.sep.join([data_path, filename, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
-    data = np.array(df)[1:, 1:]
-    # res = np.argmin(data, axis=0)
-    if filename.split('_#')[-1] == 'trace_7.1k':
-        # res.append([filename.split('_#')[1], np.argmax(data, axis=0)])
-        if np.argmax(data, axis=0) == 224:
-            res.append(int(filename.split('_#')[1].split('_')[1]))
-    # print(sorted(res, key=lambda x: x[0]))
-res.sort()
-print(res)
-# data_path = './results_attack/yzs1/'
-# df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
-# data = np.array(df)[1:, 1:]
-# print(np.argmax(data, axis=0))
+# data_path = './results_attack/graph_attack/ascad_v5_5_corr_mb'
+# filenames = os.listdir(data_path)
+# res = []
+# for filename in filenames:
+#     df = pd.read_excel(os.sep.join([data_path, filename, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
+#     data = np.array(df)[1:, 1:]
+#     # res = np.argmin(data, axis=0)
+#     if filename.split('_#')[-1] == 'trace_7.1k':
+#         # res.append([filename.split('_#')[1], np.argmax(data, axis=0)])
+#         if np.argmax(data, axis=0) == 224:
+#             res.append(int(filename.split('_#')[1].split('_')[1]))
+#     # print(sorted(res, key=lambda x: x[0]))
+# res.sort()
+# print(res)
+data_path = './results_attack/yzs_15k/'
+df = pd.read_excel(os.sep.join([data_path, 'along_time', 'tables', 'graph_attack_aio.xlsx']), header=None)
+data = np.array(df)[1:, 1:]
+print(np.argmax(data, axis=0))
